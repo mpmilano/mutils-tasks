@@ -7,7 +7,7 @@ SOURCES = FutureFreePool.cpp
 HEADERS = FutureFreePool.hpp  ProcessPool.hpp  TaskPool.hpp  ThreadPool.hpp  ctpl_stl.h
 OBJECTS=$(SOURCES:.cpp=.o)
 
-TARGET=mutils-tasks.so
+TARGET=libmutils-tasks.so
 
 all: $(TARGET)
 
