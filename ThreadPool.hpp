@@ -18,16 +18,16 @@ namespace mutils{
 	template<typename Mem, typename Ret, typename... Arg>
 	class ThreadPool_impl : public TaskPool_impl<ThreadPool_impl<Mem,Ret,Arg...>,Mem,Ret,Arg...>{
 
-		std::vector<std::unique_ptr<Mem> > remember_these;
-		std::unique_ptr<Mem> remember_this_single;
+		std::vector<std::shared_ptr<Mem> > remember_these;
+		std::shared_ptr<Mem> remember_this_single;
 		
 		SafeSet<int> indices;
 	
 	public:
 	
 		ThreadPool_impl (std::shared_ptr<ThreadPool_impl> &pp,
-						 std::function<void (std::unique_ptr<Mem>&, int)> &init,
-						  std::vector<std::function<Ret (std::unique_ptr<Mem>&, int, Arg...)> > beh,
+						 std::function<void (std::shared_ptr<Mem>&, int)> &init,
+						  std::vector<std::function<Ret (std::shared_ptr<Mem>, int, Arg...)> > beh,
 						  int limit,
 						  std::function<Ret (std::exception_ptr)> onException
 			):TaskPool_impl<ThreadPool_impl<Mem,Ret,Arg...>,Mem,Ret,Arg...>(pp,init,beh,limit,onException),remember_these(this->tp ? limit : 1){
@@ -36,17 +36,26 @@ namespace mutils{
 
 			for (auto i : indices.iterable_copy()){
 				init(remember_these.at(i),i);
+				assert(remember_these.at(i));
+			}
+
+			for (auto ptr : remember_these){
+				assert(ptr);
 			}
 		}
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
 			auto this_sp = this->this_sp;
+			for (auto ptr :  this_sp->remember_these){
+				assert(ptr);
+			}
 			assert(this_sp.get() == this);
 			auto fun =
 				[this_sp,command,arg...](int) -> std::unique_ptr<Ret>{
 				auto mem_indx = this_sp->indices.pop();
 				AtScopeEnd ase{[&](){this_sp->indices.add(mem_indx);}};
 				try{
+					assert(this_sp->remember_these.at(mem_indx));
 					return heap_copy(this_sp->behaviors.at(command)(this_sp->remember_these.at(mem_indx),mem_indx,arg...));
 				}
 				catch(...){
