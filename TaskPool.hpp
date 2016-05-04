@@ -14,32 +14,46 @@ namespace mutils{
 		static constexpr auto value = "Exception Occurred!";
 	};
 	
-	template<typename Impl, typename Mem, typename Ret, typename... Arg>
+	template<typename Impl, typename Mem1, typename Mem2, typename Ret, typename... Arg>
 	class TaskPool;
 	
-	template<typename Impl, typename Mem, typename Ret, typename... Arg>
+	template<typename Impl, typename Mem1, typename Mem2, typename Ret, typename... Arg>
 	class TaskPool_impl {
+	public:
+		using init_f = std::function<void (int, std::shared_ptr<Mem1>&, int, std::shared_ptr<Mem2>&)>;
+		using action_f = std::function<Ret (int, std::shared_ptr<Mem1>, int, std::shared_ptr<Mem2>&, Arg...)>;
+		using exception_f = std::function<Ret (std::exception_ptr)>;
 
 	protected:
 		const int limit;
 		std::unique_ptr<ctpl::thread_pool> tp;
-		std::function<void (std::shared_ptr<Mem>&, int)> init;
-		std::vector<std::function<Ret (std::shared_ptr<Mem>, int, Arg...)> > behaviors;
-		std::function<Ret (std::exception_ptr)> onException;
+		init_f init;
+		std::vector<action_f> behaviors;
+		exception_f onException;
 		bool pool_alive;
 		std::shared_ptr<Impl> &this_sp;
 
 		TaskPool_impl (std::shared_ptr<Impl> &pp,
-					   std::function<void (std::shared_ptr<Mem>&, int)> &init,
-					   std::vector<std::function<Ret (std::shared_ptr<Mem>, int, Arg...)> > beh,
+					   const init_f &init,
+					   std::vector<action_f> beh,
 					   int limit,
-					   std::function<Ret (std::exception_ptr)> onException
+					   exception_f onException
 			):limit(limit),tp(limit > 0 ? new ctpl::thread_pool{limit} : nullptr),
 			  init(init),behaviors(beh),onException(onException),pool_alive(true),this_sp(pp){}
 		
 		//it is intended for the constructor to take the same types as TaskPool
 	public:
 		virtual std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg) = 0;
+		virtual std::size_t mem_count() const = 0;
+		
+		virtual void increase_mem(std::size_t howmuch) = 0;
+
+		void set_mem_to(std::size_t value){
+			assert(value >= mem_count());
+			if (value > mem_count()){
+				increase_mem(mem_count() - value);
+			}
+		}
 
 	private:
 		SafeSet<std::pair<std::thread::id, int> > pending_set;
@@ -63,20 +77,23 @@ namespace mutils{
 		friend class TaskPool;
 	};
 	
-	template<class Impl, typename Mem, typename Ret, typename... Arg>
+	template<class Impl, typename Ret, typename... Arg>
 	class TaskPool {
 		std::shared_ptr<Impl > inst;
 	public:
 
+		using init_f = typename Impl::init_f;
+		using action_f = typename Impl::action_f;
+		using exception_f = typename Impl::exception_f;
 
 		//The "memory" cell is guaranteed to be passed in queue order; we make the *longest*
 		//possible duration elapse 
 
 		TaskPool (
-			std::function<void (std::shared_ptr<Mem>&, int)> init_mem,
-			std::vector<std::function<Ret (std::shared_ptr<Mem>, int, Arg...)> > beh,
-			  int limit = 200,
-			  std::function<Ret (std::exception_ptr)> onExn = [](std::exception_ptr exn){
+			init_f init_mem,
+			std::vector<action_f> beh,
+			int limit = 200,
+			exception_f onExn = [](std::exception_ptr exn){
 				  try {
 					  assert(exn);
 					  std::rethrow_exception(exn);
@@ -90,6 +107,16 @@ namespace mutils{
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
 			return inst->launch(command,arg...);
+		}
+
+		//increases counts of "Mem" *without* increasing underlying number of threads
+		void increase_mem(std::size_t count){
+			inst->increase_mem(count);
+		}
+
+		//if count is at or above the current mem, increases mem to reach count.
+		void set_mem_to(std::size_t count){
+			inst->set_mem_to(count);
 		}
 		
 		void print_pending(){
