@@ -22,6 +22,9 @@ namespace mutils{
 			std::shared_ptr<Mem1> thread_local_memory;
 			std::vector<std::shared_ptr<Mem2> > simulated_memory;
 			int next_simulated{0};
+
+			memories() = default;
+			memories(const memories&) = delete;
 		};
 		
 		std::shared_ptr<std::vector<memories> > memory;
@@ -100,20 +103,19 @@ namespace mutils{
 			assert(this_sp.get() == this);
 			auto fun =
 				[this_sp,command,arg...](int) -> std::unique_ptr<Ret>{
-				auto tl_indx = this_sp->tl_indices.pop();
-				auto sm_indx = this_sp->sm_indices.pop();
-				
+				auto index = this_sp->indices.pop();
 				AtScopeEnd ase{[&](){
-						this_sp->tl_indices.add(tl_indx);
-						this_sp->sm_indices.add(sm_indx);
+						this_sp->indices.add(index);
 					}};
 				
 				try{
-					assert(this_sp->thread_local_memory->at(tl_indx));
+					auto &mem = this_sp->memory->at(index);
+					auto j = mem.next_simulated;
+					++mem.next_simulated;
 					return heap_copy(
 						this_sp->behaviors.at(command) (
-							tl_indx,this_sp->thread_local_memory->at(tl_indx),
-							sm_indx,this_sp->simulated_memory->at(sm_indx),
+							index,mem.thread_local_memory,
+							index + (j * thread_max),mem.simulated_memory.at(j),
 							arg...));
 				}
 				catch(...){
