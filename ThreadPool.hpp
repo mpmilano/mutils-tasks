@@ -24,11 +24,11 @@ namespace mutils{
 			int next_simulated{0};
 
 			memories() = default;
-			memories(const memories&) = delete;
+			memories(const memories&) = default;
 		};
 		
 		std::shared_ptr<std::vector<memories> > memory;
-		int last_index_enhanced{0};
+		int next_enhanced_index{0};
 	
 		SafeSet<int> indices;
 		
@@ -48,54 +48,81 @@ namespace mutils{
 						 int limit,
 						 exception_f onException
 			):super_t(pp,init,beh,limit,onException),
-			  thread_local_memory(new std::vector<std::shared_ptr<Mem1> >(this->tp ? limit : 1)),
-			  simulated_memory(new std::vector<std::shared_ptr<Mem2> >(this->tp ? limit : 1)),
+			  memory(new std::vector<memories>(this->tp ? limit : 1)),
 			  thread_max(limit)
 			{
 			assert(this->tp);
+			assert(memory->size() == thread_max);
 			for (std::size_t i = 0; i < (this->tp ? limit : 1); ++i){
 				indices.add(i);
 			}
 
 			for (auto i : indices.iterable_copy()){
 				auto &mem = memory->at(i);
-				for (int j = 0; i < mem.simulated_memory.size(); ++j){
-					auto &sm = mem.simulated_memory.at(j);
-					auto sm_index = i + (thread_max * j);
-					init(i,mem.thread_local_memory,sm_index,sm);
-				}
+				mem.simulated_memory.emplace_back(nullptr);
+				auto j = 0;
+				auto &sm = mem.simulated_memory.at(j);
+				auto sm_index = i + (thread_max * j);
+				init(i,mem.thread_local_memory,sm_index,sm);
+				assert(mem.thread_local_memory);
+				assert(mem.simulated_memory.at(0));
+				assert(memory->at(i).thread_local_memory);
 			}
+
+			assert(indices.size() == thread_max);
+			assert(indices.iterable_copy().front() == 0);
+			
+			assert(memory->at(0).thread_local_memory);
+			assert(memory->at(0).simulated_memory.at(0));
 		}
+
+	private:
+		std::size_t mem_count(const std::vector<memories>& m) const {
+			auto enhance_progress = (thread_max + next_enhanced_index-1) % thread_max;
+			assert(enhance_progress < thread_max);
+			assert(m.size() == thread_max);
+			auto max_sim_size = m.at(enhance_progress).simulated_memory.size();
+			auto ret = (enhance_progress + 1) + ((max_sim_size-1) * thread_max);
+			assert([&](){
+					auto count = 0;
+					for (auto &mem : m){
+						count += mem.simulated_memory.size();
+					}
+					assert(count == ret);
+					return count == ret;
+				}());
+			return ret;
+		}
+	public:
 
 		std::size_t mem_count() const {
-			return simulated_memory->size();
-		}
-
-		static void generate_modded_range(std::size_t begin, std::size_t end, std::size_t mod){
-			
-			for (int i = begin; (begin > end ? i > begin || i < end : i < end); i = ((i + 1)%mod)){
-				//body
-			}
+			return mem_count(*memory);
 		}
 
 		virtual void increase_mem(std::size_t howmuch) {
 			using namespace std;
+			using namespace chrono;
+			auto oldmem = mem_count();
+			using namespace std;
 			auto new_mem =
 				std::make_shared<std::vector<memories> >(*memory);
 			assert(new_mem->size() == memory->size());
-			assert(new_mem->at(0));
-			auto end = (last_index_enhanced + howmuch) % thread_max;
-			for (int i = last_index_enhanced;
-				 (last_index_enhanced > end ? i > last_index_enhanced || i < end : i < end);
-				 i = ((i + 1) % thread_max)){
-				auto &mem = memory->at(i);
-				mem.sm_indices.emplace_back(nullptr);
-				int j = sm_indices.size() - 1;
+			assert(memory->at(0).thread_local_memory);
+			assert(new_mem->at(0).thread_local_memory);
+			auto end = (next_enhanced_index + howmuch);
+			for (int _i = next_enhanced_index; _i < end; ++_i){
+				auto i = _i % thread_max;
+				auto &mem = new_mem->at(i);
+				assert(mem.simulated_memory.size() > 0);
+				mem.simulated_memory.emplace_back(nullptr);
+				int j = mem.simulated_memory.size() - 1;
+				assert(!mem.simulated_memory.at(j));
 				this->init(i, mem.thread_local_memory,
 						   i + (j*thread_max),mem.simulated_memory.at(j));
 			}
-			static_assert(std::is_same<decltype(new_mem),decltype(simulated_memory)>::value,"");
-			simulated_memory.swap(new_mem);
+			assert(mem_count(*new_mem) == howmuch + oldmem);
+			memory.swap(new_mem);
+			assert(mem_count() == howmuch + oldmem);
 		}
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
@@ -115,7 +142,7 @@ namespace mutils{
 					return heap_copy(
 						this_sp->behaviors.at(command) (
 							index,mem.thread_local_memory,
-							index + (j * thread_max),mem.simulated_memory.at(j),
+							index + (j * this_sp->thread_max),mem.simulated_memory.at(j),
 							arg...));
 				}
 				catch(...){
