@@ -15,13 +15,20 @@
 
 namespace mutils{
 
-	template<typename Mem1, , typename Mem2, typename Ret, typename... Arg>
+	template<typename Mem1, typename Mem2, typename Ret, typename... Arg>
 	class ThreadPool_impl : public TaskPool_impl<ThreadPool_impl<Mem1,Mem2,Ret,Arg...>,Mem1,Mem2,Ret,Arg...>{
 
-		std::shared_ptr<std::vector<std::shared_ptr<Mem1> > > thread_local_memory;
-		std::shared_ptr<std::vector<std::shared_ptr<Mem2> > > simulated_memory;
+		struct memories{
+			std::shared_ptr<Mem1> thread_local_memory;
+			std::vector<std::shared_ptr<Mem2> > simulated_memory;
+			int next_simulated{0};
+		};
 		
+		std::shared_ptr<std::vector<memories> > memory;
+		int last_index_enhanced{0};
+	
 		SafeSet<int> indices;
+		
 		const int thread_max;
 	
 	public:
@@ -38,17 +45,22 @@ namespace mutils{
 						 int limit,
 						 exception_f onException
 			):super_t(pp,init,beh,limit,onException),
-			  thread_local_memory(new std::vector<std::shared_ptr<Mem> >(this->tp ? limit : 1)),
-			  simulated_memory(new std::vector<std::shared_ptr<Mem> >(this->tp ? limit : 1)),
+			  thread_local_memory(new std::vector<std::shared_ptr<Mem1> >(this->tp ? limit : 1)),
+			  simulated_memory(new std::vector<std::shared_ptr<Mem2> >(this->tp ? limit : 1)),
 			  thread_max(limit)
 			{
 			assert(this->tp);
-			for (int i = 0; i < (this->tp ? limit : 1); ++i)
+			for (std::size_t i = 0; i < (this->tp ? limit : 1); ++i){
 				indices.add(i);
+			}
 
 			for (auto i : indices.iterable_copy()){
-				init(i,thread_local_memory->at(i),i,simulated_memory->at(i));
-				assert(thread_local_memory->at(i) && simulated_memory->at(i));
+				auto &mem = memory->at(i);
+				for (int j = 0; i < mem.simulated_memory.size(); ++j){
+					auto &sm = mem.simulated_memory.at(j);
+					auto sm_index = i + (thread_max * j);
+					init(i,mem.thread_local_memory,sm_index,sm);
+				}
 			}
 		}
 
@@ -56,20 +68,31 @@ namespace mutils{
 			return simulated_memory->size();
 		}
 
+		static void generate_modded_range(std::size_t begin, std::size_t end, std::size_t mod){
+			
+			for (int i = begin; (begin > end ? i > begin || i < end : i < end); i = ((i + 1)%mod)){
+				//body
+			}
+		}
+
 		virtual void increase_mem(std::size_t howmuch) {
 			using namespace std;
-			auto first_index = simulated_memory->size();
 			auto new_mem =
-				std::make_shared<std::vector<std::shared_ptr<Mem2> > >(first_index + howmuch);
-			new_mem->insert(new_mem->begin(),simulated_memory->begin(),simulated_memory->end());
-			for (int i = first_index; i < first_index + howmuch; ++i){
-				this->init(i % thread_max, thread_local_memory->at(i % thread_max),
-						   i,new_mem->at(i));
+				std::make_shared<std::vector<memories> >(*memory);
+			assert(new_mem->size() == memory->size());
+			assert(new_mem->at(0));
+			auto end = (last_index_enhanced + howmuch) % thread_max;
+			for (int i = last_index_enhanced;
+				 (last_index_enhanced > end ? i > last_index_enhanced || i < end : i < end);
+				 i = ((i + 1) % thread_max)){
+				auto &mem = memory->at(i);
+				mem.sm_indices.emplace_back(nullptr);
+				int j = sm_indices.size() - 1;
+				this->init(i, mem.thread_local_memory,
+						   i + (j*thread_max),mem.simulated_memory.at(j));
 			}
-			atomic_store(&simulated_memory,new_mem);
-			for (int i = first_index; i < first_index + howmuch; ++i){
-				indices.add(i);
-			}
+			static_assert(std::is_same<decltype(new_mem),decltype(simulated_memory)>::value,"");
+			simulated_memory.swap(new_mem);
 		}
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
@@ -77,16 +100,21 @@ namespace mutils{
 			assert(this_sp.get() == this);
 			auto fun =
 				[this_sp,command,arg...](int) -> std::unique_ptr<Ret>{
-				const auto thread_max = this_sp->thread_max;
-				auto mem_indx = this_sp->indices.pop();
-				AtScopeEnd ase{[&](){this_sp->indices.add(mem_indx);}};
+				auto tl_indx = this_sp->tl_indices.pop();
+				auto sm_indx = this_sp->sm_indices.pop();
+				
+				AtScopeEnd ase{[&](){
+						this_sp->tl_indices.add(tl_indx);
+						this_sp->sm_indices.add(sm_indx);
+					}};
+				
 				try{
-					assert(this_sp->thread_local_memory->at(mem_indx % thread_max));
+					assert(this_sp->thread_local_memory->at(tl_indx));
 					return heap_copy(
-						this_sp->behaviors.at(command)(
-							mem_indx%thread_max,this_sp->thread_local_memory->at(mem_indx%thread_max),
-							mem_indx,this_sp->simulated_memory->at(mem_indx),
-							mem_indx,arg...));
+						this_sp->behaviors.at(command) (
+							tl_indx,this_sp->thread_local_memory->at(tl_indx),
+							sm_indx,this_sp->simulated_memory->at(sm_indx),
+							arg...));
 				}
 				catch(...){
 					return heap_copy(this_sp->onException(std::current_exception()));
@@ -105,7 +133,7 @@ namespace mutils{
 		}
 	};
 	
-	template<typename Mem, typename Ret, typename... Arg>
-	using ThreadPool = TaskPool<ThreadPool_impl<Mem,Ret,Arg...>,Mem,Ret,Arg...>;
+	template<typename Mem1, typename Mem2, typename Ret, typename... Arg>
+	using ThreadPool = TaskPool<ThreadPool_impl<Mem1,Mem2,Ret,Arg...>,Ret,Arg...>;
 
 }

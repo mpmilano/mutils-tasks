@@ -14,14 +14,14 @@ namespace mutils{
 		static constexpr auto value = "Exception Occurred!";
 	};
 	
-	template<typename Impl, typename Mem1, typename Mem2, typename Ret, typename... Arg>
+	template<typename Impl, typename Ret, typename... Arg>
 	class TaskPool;
 	
 	template<typename Impl, typename Mem1, typename Mem2, typename Ret, typename... Arg>
 	class TaskPool_impl {
 	public:
 		using init_f = std::function<void (int, std::shared_ptr<Mem1>&, int, std::shared_ptr<Mem2>&)>;
-		using action_f = std::function<Ret (int, std::shared_ptr<Mem1>, int, std::shared_ptr<Mem2>&, Arg...)>;
+		using action_f = std::function<Ret (int, std::shared_ptr<Mem1>, int, std::shared_ptr<Mem2>, Arg...)>;
 		using exception_f = std::function<Ret (std::exception_ptr)>;
 
 	protected:
@@ -49,10 +49,12 @@ namespace mutils{
 		virtual void increase_mem(std::size_t howmuch) = 0;
 
 		void set_mem_to(std::size_t value){
-			assert(value >= mem_count());
-			if (value > mem_count()){
-				increase_mem(mem_count() - value);
+			int oldmem = mem_count();
+			assert(value >= oldmem);
+			if (value > oldmem){
+				increase_mem(value - oldmem);
 			}
+			assert(mem_count() == value);
 		}
 
 	private:
@@ -73,7 +75,7 @@ namespace mutils{
 		}
 		
 		virtual ~TaskPool_impl(){}
-		template<typename Mem2, typename Impl2, typename Ret2, typename... Arg2>
+		template<typename Impl2, typename Ret2, typename... Arg2>
 		friend class TaskPool;
 	};
 	
@@ -85,6 +87,10 @@ namespace mutils{
 		using init_f = typename Impl::init_f;
 		using action_f = typename Impl::action_f;
 		using exception_f = typename Impl::exception_f;
+		
+		using init_fp = typename function_traits<init_f>::fp_t;
+		using action_fp = typename function_traits<action_f>::fp_t;
+		using exception_fp = typename function_traits<exception_f>::fp_t;
 
 		//The "memory" cell is guaranteed to be passed in queue order; we make the *longest*
 		//possible duration elapse 
