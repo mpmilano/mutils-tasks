@@ -119,6 +119,7 @@ namespace mutils{
 				assert(!mem.simulated_memory.at(j));
 				this->init(i, mem.thread_local_memory,
 						   i + (j*thread_max),mem.simulated_memory.at(j));
+                                next_enhanced_index = (next_enhanced_index+1) % thread_max;
 			}
 			assert(mem_count(*new_mem) == howmuch + oldmem);
 			memory.swap(new_mem);
