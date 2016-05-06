@@ -136,14 +136,16 @@ namespace mutils{
 						this_sp->indices.add(index);
 					}};
 				
+                                auto &mem = this_sp->memory->at(index);
+                                auto j = mem.next_simulated;
+                                mem.next_simulated = (mem.next_simulated + 1) % mem.simulated_memory.size();
+                                auto &cmnd = this_sp->behaviors.at(command);
+                                assert(j < mem.simulated_memory.size());
+                                auto &simmem = mem.simulated_memory.at(j);
 				try{
-					auto &mem = this_sp->memory->at(index);
-					auto j = mem.next_simulated;
-					++mem.next_simulated;
-					return heap_copy(
-						this_sp->behaviors.at(command) (
+                                        return heap_copy(cmnd(
 							index,mem.thread_local_memory,
-							index + (j * this_sp->thread_max),mem.simulated_memory.at(j),
+                                                        index + (j * this_sp->thread_max),simmem,
 							arg...));
 				}
 				catch(...){
