@@ -1,4 +1,5 @@
 #include "FutureFreePool.hpp"
+#include "GlobalPool.hpp"
 #include <list>
 #include "AtScopeEnd.hpp"
 
@@ -28,7 +29,7 @@ namespace mutils{
 				lock{this_p->m};
 				this_p->available_ids.push_back(pos);
 			}};
-		pending[pos] = internal_pool.push([fun,ase2 = std::move(ase)](int i){
+		pending[pos] = GlobalPool::push([fun,ase2 = std::move(ase)](int i){
 				fun(i);
 				assert(ase2.assert_this());
 			});
