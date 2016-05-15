@@ -1,3 +1,3 @@
 #include "GlobalPool.hpp"
 
-GlobalPool::GlobalPool inst;
+GlobalPool  GlobalPool::inst;

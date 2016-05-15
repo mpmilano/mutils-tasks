@@ -1,5 +1,6 @@
 #pragma once
 #include "ctpl_stl.h"
+#include "GlobalPool.hpp"
 #include <list>
 #include <future>
 #include <array>
@@ -11,7 +12,7 @@ namespace mutils{
 		std::list<int> available_ids = [](){std::list <int> ret; for (int i =0; i < bound; ++i) ret.push_back(i); return ret;}();
 		using lock = std::unique_lock<std::mutex>;
 		std::mutex m;
-		using fut_type = decltype(internal_pool.push(std::declval<std::function<void (int)> >()));
+		using fut_type = decltype(GlobalPool::push(std::declval<std::function<void (int)> >()));
 		std::array<fut_type,bound> pending;
 		std::shared_ptr<FutureFreePool_impl> &this_p;
 		int get_pos();
