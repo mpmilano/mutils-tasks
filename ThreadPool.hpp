@@ -75,6 +75,8 @@ namespace mutils{
 			
 			assert(memory->at(0).thread_local_memory);
 			assert(memory->at(0).simulated_memory.at(0));
+
+			std::thread{process_waiters,pp}.detach();
 		}
 
 	private:
@@ -126,15 +128,50 @@ namespace mutils{
 			memory.swap(new_mem);
 			assert(mem_count() == howmuch + oldmem);
 		}
+
+		std::mutex waiter_lock;
+		std::condition_variable waiter_cv;
+		std::list<std::function<std::unique_ptr<Ret> (int)> > waiters;
+
+		auto do_launch(const std::function<std::unique_ptr<Ret> (int)> &fun){
+			if (this->tp){
+				if (this->tp->n_idle() > 5)
+					return this->tp->push(fun);
+				else return GlobalPool::push(fun);
+			}
+			else {
+				int id = std::hash<std::thread::id>{}(std::this_thread::get_id());
+				return std::async(std::launch::deferred, std::move(fun),id);
+			}
+		}
+		
+		static void process_waiters(std::shared_ptr<ThreadPool_impl> this_sp){
+			using namespace std::chrono;
+			while (this_sp->pool_alive){
+				std::unique_lock<std::mutex> wl{this_sp->waiter_lock};
+				if (this_sp->waiters.size() == 0 || this_sp->indices.size() == 0){
+					this_sp->waiter_cv.wait_for(wl,1s,[&](){return this_sp->waiters.size() > 0
+								&& this_sp->indices.size() > 0;});
+				}
+				while (this_sp->indices.size() > 0 && this_sp->waiters.size() > 0){
+					auto fun = this_sp->waiters.front();
+					this_sp->waiters.pop_front();
+					this_sp->do_launch(fun);
+				}
+			}
+		}
+
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
 			auto this_sp = this->this_sp;
 			assert(this_sp.get() == this);
 			auto fun =
 				[this_sp,command,arg...](int) -> std::unique_ptr<Ret>{
+				
 				auto index = this_sp->indices.pop();
 				AtScopeEnd ase{[&](){
 						this_sp->indices.add(index);
+						this_sp->waiter_cv.notify_all();
 					}};
 				
 				auto &mem = this_sp->memory->at(index);
@@ -153,14 +190,12 @@ namespace mutils{
 					return heap_copy(this_sp->onException(std::current_exception()));
 				}
 			};
-			if (this->tp){
-				if (this->tp->n_idle() > 0)
-					return this->tp->push(fun);
-				else return GlobalPool::push(fun);
-			}
+			if (indices.size() > 0)
+				return do_launch(fun);
 			else {
-				int id = std::hash<std::thread::id>{}(std::this_thread::get_id());
-				return std::async(std::launch::deferred, std::move(fun),id);
+				std::unique_lock<std::mutex> wl{waiter_lock};
+				waiters.push_back(fun);
+				return waiter_future();
 			}
 		}
 
