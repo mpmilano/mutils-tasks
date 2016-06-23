@@ -17,11 +17,11 @@ namespace mutils{
 	template<typename Impl, typename Ret, typename... Arg>
 	class TaskPool;
 	
-	template<typename Impl, typename Mem1, typename Mem2, typename Ret, typename... Arg>
+	template<typename Impl, typename Mem, typename Ret, typename... Arg>
 	class TaskPool_impl {
 	public:
-		using init_f = std::function<void (int, std::shared_ptr<Mem1>&, int, std::shared_ptr<Mem2>&)>;
-		using action_f = std::function<Ret (int, std::shared_ptr<Mem1>, int, std::shared_ptr<Mem2>, Arg...)>;
+		using init_f = std::function<void (int, std::shared_ptr<Mem>&)>;
+		using action_f = std::function<Ret (int, std::shared_ptr<Mem>, Arg...)>;
 		using exception_f = std::function<Ret (std::exception_ptr)>;
 
 	protected:
@@ -95,20 +95,12 @@ namespace mutils{
 		//The "memory" cell is guaranteed to be passed in queue order; we make the *longest*
 		//possible duration elapse 
 
+		const static exception_f default_exception;
 		TaskPool (
 			init_f init_mem,
 			std::vector<action_f> beh,
 			int limit = 200,
-			exception_f onExn = [](std::exception_ptr exn){
-				  try {
-					  assert(exn);
-					  std::rethrow_exception(exn);
-				  }
-				  catch (...){
-					  return default_on_exn<Ret>::value;
-				  }
-				  assert(false && "exn handler called with no currrent exception?");
-			  })
+			exception_f onExn = default_exception)
 			:inst(new Impl(inst,init_mem,beh,limit,onExn)){}
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
@@ -132,6 +124,21 @@ namespace mutils{
 		virtual ~TaskPool(){
 			inst->pool_alive = false;
 			std::cout << "sent task pool destroy" << std::endl;
+		}
+	};
+
+	//static things still can't be declared in-line, for some reason
+	template<class Impl, typename Ret, typename... Arg>
+	const typename TaskPool<Impl,Ret,Arg...>::exception_f TaskPool<Impl,Ret,Arg...>::default_exception{
+		[](std::exception_ptr exn){
+			try {
+				assert(exn);
+				std::rethrow_exception(exn);
+			}
+			catch (...){
+				return default_on_exn<Ret>::value;
+			}
+			assert(false && "exn handler called with no currrent exception?");
 		}
 	};
 	
