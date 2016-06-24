@@ -56,7 +56,8 @@ namespace mutils{
 		}
 
 		void increase_mem(std::size_t howmuch) {
-			for (auto i = mem_count(); i < howmuch; ++i){
+			auto max = howmuch + mem_count();
+			for (auto i = mem_count(); i < max; ++i){
 				remember_these.emplace_back();
 				this->init(i,remember_these.back());
 				indices.add(i);
