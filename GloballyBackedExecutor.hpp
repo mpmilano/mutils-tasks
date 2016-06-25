@@ -35,6 +35,7 @@ namespace mutils{
 		}
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
+			for (std::size_t i = 0; i < remember_these.size(); ++i) assert(remember_these.at(i));
 			auto this_sp = this->this_sp;
 			auto fun =
 				[this_sp,command,arg...](int) -> std::unique_ptr<Ret>{
@@ -61,6 +62,7 @@ namespace mutils{
 				remember_these.emplace_back();
 				this->init(i,remember_these.back());
 				indices.add(i);
+				assert(remember_these.at(i));
 			}
 		}
 
