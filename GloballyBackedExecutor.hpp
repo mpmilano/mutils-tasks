@@ -20,7 +20,7 @@ namespace mutils{
 	class GloballyBackedExecutor_impl : public TaskPool_impl<GloballyBackedExecutor_impl<Mem,Ret,Arg...>,Mem,Ret,Arg...>{
 		using Super = TaskPool_impl<GloballyBackedExecutor_impl<Mem,Ret,Arg...>,Mem,Ret,Arg...>;
 
-		std::vector<std::shared_ptr<Mem> > remember_these;
+		std::vector<std::unique_ptr<Mem> > remember_these;
 		//pop() will block if no indices are available.
 		SafeSet<int> indices;
 	
@@ -31,19 +31,18 @@ namespace mutils{
 						 std::vector<typename Super::action_f> beh,
 						 int /*will always be 0*/,
 						 typename Super::exception_f onException
-			):Super(pp,init,beh,0,onException){
-		}
+			):Super(pp,init,beh,0,onException){}
+
+		GloballyBackedExecutor_impl(const GloballyBackedExecutor_impl&) = delete;
 		
 		std::future<std::unique_ptr<Ret> > launch(int command, const Arg & ... arg){
-			for (std::size_t i = 0; i < remember_these.size(); ++i) assert(remember_these.at(i));
 			auto this_sp = this->this_sp;
 			auto fun =
 				[this_sp,command,arg...](int) -> std::unique_ptr<Ret>{
 				auto mem_indx = this_sp->indices.pop();
 				AtScopeEnd ase{[&](){this_sp->indices.add(mem_indx);}};
 				try{
-					assert(this_sp->remember_these.at(mem_indx));
-					return heap_copy(this_sp->behaviors.at(command)(mem_indx,this_sp->remember_these.at(mem_indx),arg...));
+					return heap_copy(this_sp->behaviors.at(command)(mem_indx,*this_sp->remember_these.at(mem_indx),arg...));
 				}
 				catch(...){
 					return heap_copy(this_sp->onException(std::current_exception()));
@@ -59,10 +58,9 @@ namespace mutils{
 		void increase_mem(std::size_t howmuch) {
 			auto max = howmuch + mem_count();
 			for (auto i = mem_count(); i < max; ++i){
-				remember_these.emplace_back();
-				this->init(i,remember_these.back());
+				remember_these.emplace_back(new Mem(i));
+				this->init(i,*remember_these.at(i));
 				indices.add(i);
-				assert(remember_these.at(i));
 			}
 		}
 

@@ -1,13 +1,12 @@
 #pragma once
 #include "ctpl_stl.h"
-
-#ifndef MAX_THREADS
-#define MAX_THREADS 1000
-#endif
+#include <iostream>
 
 struct GlobalPool{
 private:
-	GlobalPool(){}
+	GlobalPool(){
+		std::cout << "Global thread count: " << pool.size() << std::endl;
+	}
 public:
 	GlobalPool(const GlobalPool&) = delete;
 	//access to this is already thread safe; no need to double-lock.

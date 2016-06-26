@@ -20,8 +20,8 @@ namespace mutils{
 	template<typename Impl, typename Mem, typename Ret, typename... Arg>
 	class TaskPool_impl {
 	public:
-		using init_f = std::function<void (int, std::shared_ptr<Mem>&)>;
-		using action_f = std::function<Ret (int, std::shared_ptr<Mem>, Arg...)>;
+		using init_f = std::function<void (int, Mem&)>;
+		using action_f = std::function<Ret (int, Mem&, Arg...)>;
 		using exception_f = std::function<Ret (std::exception_ptr)>;
 
 	protected:
