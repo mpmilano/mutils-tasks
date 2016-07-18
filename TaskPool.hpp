@@ -49,7 +49,7 @@ namespace mutils{
 		virtual void increase_mem(std::size_t howmuch) = 0;
 
 		void set_mem_to(std::size_t value){
-			int oldmem = mem_count();
+			auto oldmem = mem_count();
 			assert(value >= oldmem);
 			if (value > oldmem){
 				increase_mem(value - oldmem);
