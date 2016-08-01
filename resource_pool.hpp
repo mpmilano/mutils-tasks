@@ -24,6 +24,7 @@ namespace mutils{
 	public:
 		struct LockedResource;
 		struct WeakResource;
+		struct index_owner;
 	private:
 		
 		struct state {
@@ -40,13 +41,15 @@ namespace mutils{
 			static LockedResource acquire_no_preference(std::shared_ptr<state> _this, Args && ... a);
 			static LockedResource acquire_new_preference(std::shared_ptr<state> _this, Args && ... a);
 			
-			static LockedResource acquire_with_preference(std::shared_ptr<state> _this, size_type preference, Args && ...);
+			static LockedResource acquire_with_preference(std::shared_ptr<state> _this, std::shared_ptr<const index_owner> preference, Args && ...);
 		};
 		
 		std::shared_ptr<state> _state;
 		
 	public:
 
+		bool dbg_pool_full() const { return _state->pool_full();}
+		
 		ResourcePool(size_type max_resources, const decltype(state::builder) &builder);
 		
 		ResourcePool(const ResourcePool&) = delete;
@@ -56,7 +59,7 @@ namespace mutils{
 			std::shared_ptr<state> parent;
 			index_owner(const size_type indx, std::shared_ptr<state> parent);
 			index_owner(const index_owner&) = delete;
-			index_owner(index_owner&&);
+			//index_owner(index_owner&&);
 			~index_owner();
 		};
 
@@ -78,7 +81,7 @@ namespace mutils{
 			
 		public:
 			LockedResource(const LockedResource&) = delete;
-			LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx);
+			LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent, std::shared_ptr<const index_owner> indx);
 			LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent);
 			LockedResource(LockedResource&& o);
 
