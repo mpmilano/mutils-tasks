@@ -4,23 +4,72 @@ namespace mutils{
 
 	template<typename T, typename... Args>
 	ResourcePool::state::state(size_type max_resources, const decltype(builder) &builder)
-		:resources(max_resources),
-		 max_resources(max_resources),
-		 builder(builder){}
+		:max_resources(max_resources),
+		 builder(builder){
+		for (std::size_t i = 0; i < max_resources; ++i){
+			resources.emplace_back(i);
+		}
+	}
 	
 	template<typename T, typename... Args>
 	bool ResourcePool::state::pool_full() const {
-		return max_resources == (current_max_index + 1)
+		return max_resources <= (current_max_index + 1)
 			|| recycled_indices.size() == 0;
 	}
 
-	LockedResource ResourcePool::state::acquire_with_preference(size_type preference, Args && ...){
-		if (preference > max_resources){
-			//no preference!
+	LockedResource ResourcePool::state::acquire_no_preference(std::shared_ptr<state> _this, Args && ... a){
+		//don't even try to get a preference
+		const static std::function<resource_pair* ()> nullfun = []()-> resource_pair* {return nullptr;};
+		auto cand* = _this->free_resources.build_or_pop(nullfun);
+		while (cand){
+			lock l{cand->mut};
+			if (cand->resource)
+				return
+					LockedResource{std::move(cand->resource),_this,index_owner{cand->index,_this}};
+			else cand* = _this->free_resources.build_or_pop(nullfun);
+		}
+		//whoops, entirely full!
+		//just build a one-off resource
+		return LockedResource{std::unique_ptr<T>{builder(std::forward<A>(a)...)}};
+	}
+	
+	LockedResource ResourcePool::state::acquire_new_preference(std::shared_ptr<state> _this, Args && ... a){
+		//no preference!
+		if (!_this->pool_full()){
+			//try to get a preference!
+			auto my_preference = (_this->recycled_indices.size() > 0 ?
+								  _this->recycled_indices.build_or_pop(
+									  [auto &cmi = _this->current_max_index](){
+										  return cmi.fetch_add(1);})
+								  : _this->current_max_index.fetch_add(1));
+			if (my_preference < _this->max_resources){
+				//have a preference!
+				return acquire_with_preference(_this,my_preference,std::forward<Args>(a)...);
+			}
+			else {
+				//you lost, sorry. Do the no-preference-available route.
+				return acquire_no_preference(_this,std::forward<Args>(a)...);
+			}
 		}
 		else {
-			//preference!
+			return acquire_no_preference(_this,std::forward<Args>(a)...);
 		}
+	}
+	
+	LockedResource ResourcePool::state::acquire_with_preference(std::shared_ptr<state> _this, size_type preference, Args && ... a){
+		//preference!
+		auto &my_resource = _this->resources.at(preference);
+		lock l{my_resource.mut};
+		if (!my_resource.initialized){
+			my_resource.initialized = true;
+			my_resource.resource.reset(_this->builder(std::forward<Args>(a)...));
+		}
+		if (my_resource.resource){
+			return LockedResource{std::move(my_resource.resource),
+					_this,
+					index_owner{preference,_this}};
+		}
+		else return acquire_no_preference(_this,std::forward<Args>(a)...);
 	}
 
 	template<typename T, typename... Args>
@@ -33,45 +82,58 @@ namespace mutils{
 
 	template<typename T, typename... Args>
 	ResourcePool::index_owner::~index_owner(){
+		assert(indx < max_resources);
 		parent->recycled_indices.add(indx);
 	}
 
 	template<typename T, typename... Args>
-	ResourcePool::resource::resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, index indx)
+	ResourcePool::resource::resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, index_owner index)
 		:t(t),parent(parent){
-		assert(!parent->resources.at(index).second);
+		assert(!parent->resources.at(index).resource);
 	}
 
 	template<typename T, typename... Args>
 	ResourcePool::resource::~resource(){
-		parent->resources.at(index).second = std::move(t);
+		assert(indx < max_resources);
+		lock l{parent->resources.at(index).mut};
+		parent->resources.at(index).resource = std::move(t);
+		parent->free_resources.add(&parent->resources.at(index));
 	}
 	
 	template<typename T, typename... Args>
-	ResourcePool::LockedResource::LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent, index indx)
+	ResourcePool::LockedResource::LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent, index_owner index)
 		:index_preference(new index_owner(indx,parent)),
 		 parent(parent),
-		 resource(std::move(t),parent,indx)
+		 resource(std::move(t),parent,indx),
+		 single_resource(nullptr)
+	{}
+
+	template<typename T, typename... Args>
+	ResourcePool::LockedResource::LockedResource(std::unique_ptr<T> t)
+		:index_preference(nullptr),
+		 parent(nullptr),
+		 resource(nullptr),
+		 single_resource(new std::unique_ptr<T>{std::move(t)})
 	{}
 
 	template<typename T, typename... Args>
 	T const * const ResourcePool::LockedResource::operator->() const {
-		return resource->t.get();
+		return (resource ? resource->t.get() : single_resource->t.get());
 	}
 	
 	template<typename T, typename... Args>
 	T* ResourcePool::LockedResource::operator->() {
-		return resource->t.get();
+		return (resource ? resource->t.get() : single_resource->t.get());
 	}
 	
 	template<typename T, typename... Args>
 	T& ResourcePool::LockedResource::operator*() {
-		return *resources->t;
+		return (resource ? *resources->t : *single_resource->t);
 	}
 	
 	template<typename T, typename... Args>
 	const T& ResourcePool::LockedResource::operator&() const {
-		return *resources->t;
+		return (resource ? *resources->t : *single_resource->t);
 	}
 			
 	
@@ -79,17 +141,23 @@ namespace mutils{
 	explicit ResourcePool::LockedResource::LockedResource(const WeakResource& wr)
 		:index_preference(wr.index_preference),
 		 parent(wr.parent),
-		 resource(wr.resource.lock()){
-		assert(resource);
+		 resource(wr.resource.lock()),
+		 single_resource(wr.single_resource.lock())
+	{
+		assert(resource || single_resource);
 	}
 
 	template<typename T, typename... Args>
 	LockedResource ResourcePool::WeakResource::lock(Args && ... a){
 		auto locked = resource.lock();
-		if (locked && *locked) 
+		auto single_locked = single_resource.lock();
+		if ((locked && *locked) || (single_locked && *single_locked))
 			return LockedResource(*this);
+		else if (index_preference){
+			return parent->acquire_with_preference(parent,index_preference->indx,std::forward<Args>(a)...);
+		}
 		else {
-			return parent->acquire_with_preference(index_preference->indx,std::forward<Args>(a)...);
+			return parent->acquire_new_preference(parent,std::forward<Args>(a)...);
 		}
 	}
 
@@ -97,16 +165,12 @@ namespace mutils{
 	explicit ResourcePool::WeakResource::WeakResource(const LockedResource& lr)
 		:index_preference(lr.index_preference),
 		 parent(lr.parent),
-		 resource(lr.resource)
+		 resource(lr.resource),
+		 single_resource(lr.single_resource)
 	{}
 
 	template<typename T, typename... Args>
-	LockedResource ResourcePool::acquire_with_preference(size_type preference, Args && ... a){
-		return _state->acquire_with_preference(preference,std::forward<Args>(a)...);
-	}
-
-	template<typename T, typename... Args>
 	LockedResource ResourcePool::acquire(Args && ... a){
-		return _state->acquire_with_preference(max_resources + 1, std::forward<Args>(a)...);
+		return _state->acquire_with_preference(_state,max_resources + 1, std::forward<Args>(a)...);
 	}
 }
