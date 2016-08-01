@@ -22,6 +22,11 @@ namespace mutils{
 		using size_type = typename resources_vector::size_type;
 		using lock = std::unique_lock<std::mutex>;
 
+	public:
+		struct LockedResource;
+		struct WeakResource;
+	private:
+		
 		struct state {
 			resources_vector resources;
 			const size_type max_resources;
@@ -32,13 +37,16 @@ namespace mutils{
 			state(size_type max_resources, const decltype(builder) &builder);
 
 			bool pool_full() const;
+
+			static LockedResource acquire_no_preference(std::shared_ptr<state> _this, Args && ... a);
+			static LockedResource acquire_new_preference(std::shared_ptr<state> _this, Args && ... a);
 			
 			static LockedResource acquire_with_preference(std::shared_ptr<state> _this, size_type preference, Args && ...);
 		};
 		
 		std::shared_ptr<state> _state;
 
-		ResourcePool(size_type max_resources, const decltype(typename state::builder) &builder);
+		ResourcePool(size_type max_resources, const decltype(state::builder) &builder);
 		
 		ResourcePool(const ResourcePool&) = delete;
 		
@@ -55,7 +63,7 @@ namespace mutils{
 			std::unique_ptr<T> t;
 			std::shared_ptr<state> parent;
 			const size_type index;
-			resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, index indx);
+			resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, index_owner indx);
 			~resource();
 		};
 		
@@ -73,7 +81,7 @@ namespace mutils{
 			LockedResource(std::unique_ptr<T> t);
 
 			T const * const operator->() const;
-			T* operator->() const;
+			T* operator->();
 
 			T& operator*();
 			const T& operator&() const;
