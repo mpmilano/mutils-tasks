@@ -71,8 +71,13 @@ void single_threaded_test(){
 void multi_threaded_test(){
 	struct Incrementor{
 		int i;
+		std::mutex m;
 		Incrementor(int i):i(i){}
-		auto incr() {return ++i;}
+		auto incr() {
+			assert(m.try_lock());
+			std::unique_lock<std::mutex> lock{m, std::adopt_lock};
+			return ++i;
+		}
 	};
 	using LockedResource = typename ResourcePool<Incrementor, int>::LockedResource;
 	using WeakResource = typename ResourcePool<Incrementor, int>::WeakResource;
