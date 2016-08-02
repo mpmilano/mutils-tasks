@@ -70,15 +70,18 @@ namespace mutils {
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::state::acquire_with_preference(std::shared_ptr<state> _this, std::shared_ptr<const index_owner> preference, Args && ... a){
 		//preference!
 		auto &my_resource = _this->resources.at(preference->indx);
-		lock l{my_resource.mut};
-		if (!my_resource.initialized){
-			my_resource.initialized = true;
-			my_resource.resource.reset(_this->builder(std::forward<Args>(a)...));
+		/* try */{
+			lock l{my_resource.mut};
+			if (!my_resource.initialized){
+				my_resource.initialized = true;
+				my_resource.resource.reset(_this->builder(std::forward<Args>(a)...));
+			}
+			if (my_resource.resource){
+				return LockedResource{std::move(my_resource.resource),
+						_this,preference};
+			}
 		}
-		if (my_resource.resource){
-			return LockedResource{std::move(my_resource.resource),
-					_this,preference};
-		}
-		else return acquire_no_preference(_this,std::forward<Args>(a)...);
+		//else (is implicit from early return)
+		return acquire_no_preference(_this,std::forward<Args>(a)...);
 	}
 }

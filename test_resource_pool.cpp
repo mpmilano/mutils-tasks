@@ -1,9 +1,10 @@
 #include <iostream>
+#include <future>
 #include "resource_pool.hpp"
 
 using namespace mutils;
 
-int main(){
+void single_threaded_test(){
 	{
 	using LockedResource = typename ResourcePool<int>::LockedResource;
 	using WeakResource = typename ResourcePool<int>::WeakResource;
@@ -65,4 +66,39 @@ int main(){
 	}
 	assert(*pool.acquire() != 0);
 }
+}
+
+void multi_threaded_test(){
+	struct Incrementor{
+		int i;
+		Incrementor(int i):i(i){}
+		auto incr() {return ++i;}
+	};
+	using LockedResource = typename ResourcePool<Incrementor, int>::LockedResource;
+	using WeakResource = typename ResourcePool<Incrementor, int>::WeakResource;
+	ResourcePool<Incrementor, int> pool{30,[](int i){return new Incrementor{i};}};
+	std::vector<std::future<void> > futs;
+	for (int i = 0; i < 80; ++i){
+		futs.emplace_back(
+			std::async(std::launch::async,
+					   [i, weak_resource = WeakResource{pool.acquire(std::move(i))}]()  mutable {
+						   while (weak_resource.lock(std::move(i))->incr() < 50000);
+					   }));
+	}
+	for (auto& fut : futs){
+		fut.get();
+	}
+
+	auto state = pool.dbg_leak_state();
+	for (const auto &res : state->resources){
+		auto i = res.resource->i;
+		if (i < 50000) std::cout << i << std::endl;
+	}
+
+}
+
+int main(){
+	single_threaded_test();
+	multi_threaded_test();
+
 }

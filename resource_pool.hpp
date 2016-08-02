@@ -48,6 +48,7 @@ namespace mutils{
 		
 	public:
 
+		auto dbg_leak_state() { return _state;}
 		bool dbg_pool_full() const { return _state->pool_full();}
 		
 		ResourcePool(size_type max_resources, const decltype(state::builder) &builder);
