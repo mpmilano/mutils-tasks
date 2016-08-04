@@ -17,6 +17,6 @@ namespace mutils{
 				  << "Max overdraw: " << _state->max_overdraw << std::endl
 				  << "Average overdraw: "
 				  << (_state->sum_overdraws /
-					  _state->number_overdraws) << std::endl;
+					  (1 + _state->number_overdraws)) << std::endl;
 	}
 }
