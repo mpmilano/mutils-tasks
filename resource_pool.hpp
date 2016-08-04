@@ -40,6 +40,12 @@ namespace mutils{
 			SafeSet<size_type> recycled_indices;
 			SafeSet<resource_pack*> free_resources;
 			const std::function<T* (Args...)> builder;
+			//for debugging, mostly.
+			std::atomic_ullong overdrawn_count{0};
+			std::atomic_ullong max_overdraw{0};
+			std::atomic_ullong number_overdraws{0};
+			std::atomic_ullong sum_overdraws{0};
+			
 			state(size_type max_resources, const decltype(builder) &builder);
 
 			bool pool_full() const;
@@ -77,6 +83,13 @@ namespace mutils{
 			resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx);
 			~resource();
 		};
+
+		struct overdrawn_resource{
+			std::shared_ptr<state> parent;
+			std::unique_ptr<T> t;
+			overdrawn_resource(std::shared_ptr<state> sp, std::unique_ptr<T> tp);
+			~overdrawn_resource();
+		};
 		
 		class LockedResource{
 			std::shared_ptr<const index_owner> index_preference;
@@ -84,7 +97,7 @@ namespace mutils{
 			std::shared_ptr<resource> rsource;
 
 			//for when this resource is unmanaged due to overfull pull
-			std::shared_ptr<std::unique_ptr<T> > single_resource;
+			std::shared_ptr<overdrawn_resource> single_resource;
 			
 		public:
 			LockedResource(const LockedResource&) = delete;
@@ -108,7 +121,7 @@ namespace mutils{
 			std::weak_ptr<resource> rsource;
 			
 			//for when this resource is unmanaged due to overfull pull
-			std::weak_ptr<std::unique_ptr<T> > single_resource;
+			std::weak_ptr<overdrawn_resource> single_resource;
 		public:
 			LockedResource lock(Args && ... a);
 			bool is_locked() const;
@@ -120,6 +133,7 @@ namespace mutils{
 		};
 		
 		LockedResource acquire(Args && ... a);
+		~ResourcePool();
 	};
 }
 

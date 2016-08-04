@@ -15,8 +15,7 @@ namespace mutils {
 		:index_preference(nullptr),
 		 parent(parent),
 		 rsource(nullptr),
-		 single_resource(new std::unique_ptr<T>{std::move(t)})
-	{}
+		 single_resource(new overdrawn_resource(parent,std::move(t))){}
 
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::LockedResource::LockedResource(LockedResource&& o)
@@ -33,22 +32,22 @@ namespace mutils {
 
 	template<typename T, typename... Args>
 	T const * const ResourcePool<T,Args...>::LockedResource::operator->() const {
-		return (rsource ? rsource->t.get() : single_resource->get());
+		return (rsource ? rsource->t.get() : single_resource->t.get());
 	}
 	
 	template<typename T, typename... Args>
 	T* ResourcePool<T,Args...>::LockedResource::operator->() {
-		return (rsource ? rsource->t.get() : single_resource->get());
+		return (rsource ? rsource->t.get() : single_resource->t.get());
 	}
 	
 	template<typename T, typename... Args>
 	T& ResourcePool<T,Args...>::LockedResource::operator*() {
-		return (rsource ? *rsource->t : *(*single_resource));
+		return (rsource ? *rsource->t : *single_resource->t);
 	}
 	
 	template<typename T, typename... Args>
 	const T& ResourcePool<T,Args...>::LockedResource::operator&() const {
-		return (rsource ? *rsource->t : *(*single_resource));
+		return (rsource ? *rsource->t : *single_resource->t);
 	}
 			
 	

@@ -6,7 +6,7 @@ namespace mutils {
 		assert(parent);
 		auto locked = rsource.lock();
 		auto single_locked = single_resource.lock();
-		if ((locked && locked->t) || (single_locked && *single_locked))
+		if ((locked && locked->t) || (single_locked && single_locked->t))
 			return LockedResource(*this);
 		else if (index_preference){
 			return parent->acquire_with_preference(parent,index_preference,std::forward<Args>(a)...);
