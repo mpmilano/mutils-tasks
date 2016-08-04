@@ -5,6 +5,12 @@
 #include "SafeSet.hpp"
 
 namespace mutils{
+
+	struct ResourceInvalidException : public std::exception {
+		const char* what() const noexcept{
+			return "ResourceInvalidException";
+		}
+	};
 	
 	template<typename T, typename... Args>
 	class ResourcePool{
@@ -22,8 +28,8 @@ namespace mutils{
 		using lock = std::unique_lock<std::mutex>;
 
 	public:
-		struct LockedResource;
-		struct WeakResource;
+		class LockedResource;
+		class WeakResource;
 		struct index_owner;
 	private:
 		
@@ -96,7 +102,7 @@ namespace mutils{
 			friend class WeakResource;
 
 		};
-		struct WeakResource{
+		class WeakResource{
 			std::shared_ptr<const index_owner> index_preference;
 			std::shared_ptr<state> parent;
 			std::weak_ptr<resource> rsource;
@@ -105,6 +111,8 @@ namespace mutils{
 			std::weak_ptr<std::unique_ptr<T> > single_resource;
 		public:
 			LockedResource lock(Args && ... a);
+			bool is_locked() const;
+			LockedResource acquire_if_locked() const;
 			WeakResource(const WeakResource&) = delete;
 			WeakResource(WeakResource&&);
 			explicit WeakResource(const LockedResource& lr);

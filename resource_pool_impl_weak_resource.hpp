@@ -1,7 +1,7 @@
 #pragma once
 
 namespace mutils {
-		template<typename T, typename... Args>
+	template<typename T, typename... Args>
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::WeakResource::lock(Args && ... a){
 		assert(parent);
 		auto locked = rsource.lock();
@@ -14,6 +14,21 @@ namespace mutils {
 		else {
 			return parent->acquire_new_preference(parent,std::forward<Args>(a)...);
 		}
+	}
+
+	template<typename T, typename... Args>
+	bool ResourcePool<T,Args...>::WeakResource::is_locked() const {
+		return !rsource.expired() || !single_resource.expired();
+	}
+
+	template<typename T, typename... Args>
+	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::WeakResource::acquire_if_locked() const {
+		auto l1 = rsource.lock();
+		auto l2 = single_resource.lock();
+		if (l1 || l2){
+			return LockedResource{*this};
+		}
+		else throw ResourceInvalidException{};
 	}
 
 	template<typename T, typename... Args>
