@@ -128,6 +128,7 @@ namespace mutils{
 			LockedResource acquire_if_locked() const;
 			WeakResource(const WeakResource&) = delete;
 			WeakResource(WeakResource&&);
+			WeakResource& operator=(const LockedResource& lr);
 			explicit WeakResource(const LockedResource& lr);
 			friend class LockedResource;
 		};
