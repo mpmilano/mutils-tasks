@@ -49,7 +49,23 @@ namespace mutils {
 	const T& ResourcePool<T,Args...>::LockedResource::operator&() const {
 		return (rsource ? *rsource->t : *single_resource->t);
 	}
-			
+
+	template<typename T, typename... Args>
+	typename ResourcePool<T,Args...>::LockedResource
+	ResourcePool<T,Args...>::LockedResource::lock(const Args& ...){
+		return acquire_if_locked();
+	}
+
+	template<typename T, typename... Args>
+	typename ResourcePool<T,Args...>::LockedResource
+	ResourcePool<T,Args...>::LockedResource::acquire_if_locked() const {
+		return LockedResource{WeakResource{*this}};
+	}
+
+	template<typename T, typename... Args>
+	bool ResourcePool<T,Args...>::LockedResource::is_locked() const {
+		return true;
+	}
 	
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::LockedResource::LockedResource(const WeakResource& wr)

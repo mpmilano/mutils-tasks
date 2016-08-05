@@ -110,6 +110,10 @@ namespace mutils{
 
 			T& operator*();
 			const T& operator&() const;
+
+			LockedResource lock(const Args &...);
+			bool is_locked() const;
+			LockedResource acquire_if_locked() const;
 			
 			explicit LockedResource(const WeakResource& wr);
 			friend class WeakResource;
