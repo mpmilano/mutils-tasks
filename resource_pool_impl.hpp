@@ -9,4 +9,5 @@
 #include "resource_pool_impl_locked_resource.hpp"
 #include "resource_pool_impl_weak_resource.hpp"
 #include "resource_pool_impl_overdrawn_resource.hpp"
+#include "resource_pool_impl_spare_resource.hpp"
 

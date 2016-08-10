@@ -13,6 +13,9 @@ namespace mutils{
 		assert(index < parent->max_resources);
 		lock l{parent->resources.at(index).mut};
 		parent->resources.at(index).resource = std::move(t);
-		parent->free_resources.add(&parent->resources.at(index));
+		if (!parent->resources.at(index).in_free_list){
+			parent->resources.at(index).in_free_list = true;
+			parent->free_resources.add(&parent->resources.at(index));
+		}
 	}
 }
