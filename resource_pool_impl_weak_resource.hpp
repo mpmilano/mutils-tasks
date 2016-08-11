@@ -5,9 +5,7 @@ namespace mutils {
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::WeakResource::lock(Args && ... a){
 		assert(parent);
 		auto locked = rsource.lock();
-		auto single_locked = single_resource.lock();
-		auto spare_locked = spare_resource.lock();
-		if ((locked && locked->t) || (single_locked && single_locked->t) || (spare_locked && spare_locked->t))
+		if ((locked && locked->t))
 			return LockedResource(*this);
 		else if (index_preference){
 			auto to_return = 
@@ -25,15 +23,13 @@ namespace mutils {
 
 	template<typename T, typename... Args>
 	bool ResourcePool<T,Args...>::WeakResource::is_locked() const {
-		return !rsource.expired() || !single_resource.expired() || !spare_resource.expired();
+		return !rsource.expired();
 	}
 
 	template<typename T, typename... Args>
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::WeakResource::acquire_if_locked() const {
-		auto l1 = rsource.lock();
-		auto l2 = single_resource.lock();
-		auto l3 = spare_resource.lock();
-		if (l1 || l2 || l3){
+		auto rlocked = rsource.lock();
+		if (rlocked){
 			return LockedResource{*this};
 		}
 		else throw ResourceInvalidException{};
@@ -46,10 +42,8 @@ namespace mutils {
 		index_preference = lr.index_preference;
 		parent = lr.parent;
 		rsource = lr.rsource;
-		single_resource = lr.single_resource;
-		spare_resource = lr.spare_resource;
-		assert((index_preference && parent && lr.rsource)
-			   || (parent && (lr.single_resource || lr.spare_resource)));
+		assert(parent);
+		assert(lr.rsource);
 		assert(index_preference ? index_preference.use_count() > 1 : true);
 		assert(index_preference ? lr.index_preference.use_count() > 1 : true);
 		return *this;
@@ -59,12 +53,10 @@ namespace mutils {
 	ResourcePool<T,Args...>::WeakResource::WeakResource(const LockedResource& lr)
 		:index_preference(lr.index_preference),
 		 parent(lr.parent),
-		 rsource(lr.rsource),
-		 single_resource(lr.single_resource),
-		 spare_resource(lr.spare_resource)
+		 rsource(lr.rsource)
 	{
-		assert((index_preference && parent && lr.rsource)
-			   || (parent && (lr.single_resource || lr.spare_resource)));
+		assert(parent);
+		assert(lr.rsource);
 		assert(index_preference ? index_preference.use_count() > 1 : true);
 		assert(index_preference ? lr.index_preference.use_count() > 1 : true);
 	}
@@ -73,14 +65,10 @@ namespace mutils {
 	ResourcePool<T,Args...>::WeakResource::WeakResource(WeakResource&& o)
 		:index_preference(o.index_preference),
 		 parent(o.parent),
-		 rsource(o.rsource),
-		 single_resource(o.single_resource),
-		 spare_resource(o.spare_resource)
+		 rsource(o.rsource)
 	{
 		o.index_preference.reset();
 		o.parent.reset();
 		o.rsource.reset();
-		o.single_resource.reset();
-		o.spare_resource.reset();
 	}
 }

@@ -11,41 +11,57 @@ namespace mutils{
 			return "ResourceInvalidException";
 		}
 	};
-
-	enum class resource_type {
-		preferred, spare
-			};
 	
 	template<typename T, typename... Args>
 	class ResourcePool{
-		struct resource_pack{
-			std::mutex mut;
-			std::unique_ptr<T> resource;
-			const std::size_t index;
-			bool initialized{false};
-			bool in_free_list{false};
-			const resource_type type;
-			resource_pack(std::size_t ind, resource_type type);
-			resource_pack(resource_pack&&);
-		};
-		
-		using resources_vector = std::vector<resource_pack>;
-		using size_type = typename resources_vector::size_type;
-		using lock = std::unique_lock<std::mutex>;
 
 	public:
 		class LockedResource;
 		class WeakResource;
 		struct index_owner;
+		struct rented_resource;
 	private:
+		struct state;
+		
+		struct resource_pack{
+
+			std::unique_ptr<T> resource;
+			const std::size_t index;
+			bool initialized{false};
+			resource_pack(std::size_t ind);
+			resource_pack(resource_pack&&);
+			virtual std::shared_ptr<rented_resource> borrow(std::shared_ptr<state>, Args && ... a) = 0;
+			virtual void remove_from_free_list() = 0;
+		protected: virtual ~resource_pack() {};
+		};
+
+		struct preferred_resource : public resource_pack{
+			std::mutex mut;
+			bool in_free_list{false};
+			preferred_resource(std::size_t ind);
+			preferred_resource(preferred_resource&&);
+			void remove_from_free_list();
+			std::shared_ptr<rented_resource> borrow(std::shared_ptr<state>, Args && ... a);
+		};
+		
+		struct spare_resource : public resource_pack{
+			spare_resource(std::size_t ind);
+			spare_resource(spare_resource&&);
+			void remove_from_free_list(){}
+			std::shared_ptr<rented_resource> borrow(std::shared_ptr<state>, Args && ... a);
+		};
+		
+		using resources_vector = std::vector<preferred_resource>;
+		using size_type = typename resources_vector::size_type;
+		using lock = std::unique_lock<std::mutex>;
 		
 		struct state {
-			resources_vector resources;
+			resources_vector preferred_resources;
 			const size_type max_resources;
 			std::atomic<size_type> current_max_index{0};
 			SafeSet<size_type> recycled_indices;
 			SafeSet<resource_pack*> free_resources;
-			resources_vector spare_resources;
+			std::vector<spare_resource> spare_resources;
 			const std::function<T* (Args...)> builder;
 			//for debugging, mostly.
 			std::atomic_ullong overdrawn_count{0};
@@ -56,7 +72,7 @@ namespace mutils{
 			state(size_type max_resources, size_type max_spares, const decltype(builder) &builder);
 			//~state();
 
-			bool pool_full() const;
+			bool preferred_full() const;
 
 			static LockedResource acquire_no_preference(std::shared_ptr<state> _this, Args && ... a);
 			static LockedResource acquire_new_preference(std::shared_ptr<state> _this, Args && ... a);
@@ -69,7 +85,6 @@ namespace mutils{
 	public:
 
 		auto dbg_leak_state() { return _state;}
-		bool dbg_pool_full() const { return _state->pool_full();}
 		
 		ResourcePool(size_type max_resources, size_type max_spares, const decltype(state::builder) &builder);
 		
@@ -84,43 +99,40 @@ namespace mutils{
 			~index_owner();
 		};
 
-		struct resource{
+		struct rented_resource {
 			std::unique_ptr<T> t;
 			std::shared_ptr<state> parent;
-			const size_type index;
-			resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx);
-			~resource();
+			virtual ~rented_resource();
+			rented_resource(std::unique_ptr<T> t, std::shared_ptr<state> parent);
 		};
 
-		struct overdrawn_resource{
-			std::shared_ptr<state> parent;
-			std::unique_ptr<T> t;
-			overdrawn_resource(std::shared_ptr<state> sp, std::unique_ptr<T> tp);
-			~overdrawn_resource();
+		struct rented_preferred : public rented_resource{
+			const size_type index;
+			rented_preferred(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx);
+			~rented_preferred();
 		};
 
-		struct spare_resource{
-			std::shared_ptr<state> parent;
-			std::unique_ptr<T> t;
+		struct overdrawn : public rented_resource{
+			overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp);
+			~overdrawn();
+		};
+
+		struct rented_spare : public rented_resource{
 			const size_type index;
-			spare_resource(std::shared_ptr<state> sp, std::unique_ptr<T> tp, size_type indx);
-			~spare_resource();
+			rented_spare(std::shared_ptr<state> sp, std::unique_ptr<T> tp, size_type indx);
+			~rented_spare();
 		};
 		
 		class LockedResource{
 			std::shared_ptr<const index_owner> index_preference;
 			std::shared_ptr<state> parent;
-			std::shared_ptr<resource> rsource;
-
-			//for when this resource is unmanaged due to overfull pull
-			std::shared_ptr<overdrawn_resource> single_resource;
-			std::shared_ptr<spare_resource> spare_resource;
+			std::shared_ptr<rented_resource> rsource;
 			
 		public:
 			LockedResource(const LockedResource&) = delete;
-			LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent, std::shared_ptr<const index_owner> indx);
-			LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent);
-			LockedResource(std::unique_ptr<T> t, std::shared_ptr<state> parent, const size_type index);
+			LockedResource(std::shared_ptr<const index_owner> indx,
+						   std::shared_ptr<state> parent,
+						   std::shared_ptr<rented_resource> rsource);
 			LockedResource(LockedResource&& o);
 
 			T const * const operator->() const;
@@ -140,11 +152,8 @@ namespace mutils{
 		class WeakResource{
 			std::shared_ptr<const index_owner> index_preference;
 			std::shared_ptr<state> parent;
-			std::weak_ptr<resource> rsource;
-			
-			//for when this resource is unmanaged due to overfull pull
-			std::weak_ptr<overdrawn_resource> single_resource;
-			std::weak_ptr<spare_resource> spare_resource;
+			std::weak_ptr<rented_resource> rsource;
+
 		public:
 			LockedResource lock(Args && ... a);
 			bool is_locked() const;
@@ -157,6 +166,10 @@ namespace mutils{
 		};
 		
 		LockedResource acquire(Args && ... a);
+
+		size_type number_free_resources() const;
+		bool preferred_full() const { return _state->preferred_full();}
+		
 		~ResourcePool();
 	};
 }

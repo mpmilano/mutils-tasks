@@ -6,29 +6,19 @@ namespace mutils {
 		:max_resources(max_resources),
 		 builder(builder){
 		for (std::size_t i = 0; i < max_resources; ++i){
-			resources.emplace_back(i,resource_type::preferred);
+			preferred_resources.emplace_back(i);
 		}
 		for (std::size_t i = 0; i < max_spares; ++i){
-			spare_resources.emplace_back(i,resource_type::spare);
+			spare_resources.emplace_back(i);
 			free_resources.add(&spare_resources.at(i));
 		}
 	}
 	
 	template<typename T, typename... Args>
-	bool ResourcePool<T,Args...>::state::pool_full() const {
+	bool ResourcePool<T,Args...>::state::preferred_full() const {
 		assert(this);
 		return max_resources < (current_max_index + 1)
 			&& recycled_indices.size() == 0;
-	}
-
-	namespace {
-		template<typename resource_pack, typename F, typename... Args>
-		void initialize_if_needed(resource_pack& cand, const F& builder, Args && ... a){
-			if (!cand.initialized){
-				cand.initialized = true;
-				cand.resource.reset(builder(std::forward<Args>(a)...));
-			}
-		}
 	}
 
 	template<typename T, typename... Args>	
@@ -36,31 +26,23 @@ namespace mutils {
 		//don't even try to get a preference
 		auto *cand = _this->free_resources.pop();
 		while (cand){
-			lock l{cand->mut};
-			initialize_if_needed(*cand,_this->builder,std::forward<Args>(a)...);
-			if (cand->resource){
-				if (cand->type == resource_type::preferred)
-					return
-						LockedResource{
-						std::move(cand->resource),
-							_this,
-							std::make_shared<index_owner>(cand->index,_this)};
-				else if (cand->type == resource_type::spare){
-					return
-						LockedResource{std::move(cand->resource),_this,cand->index};
-				}
+			try {
+				cand->remove_from_free_list();
+				return LockedResource{nullptr, _this, cand->borrow(_this,std::forward<Args>(a)...)};
 			}
-			else cand = _this->free_resources.pop();
+			catch(const ResourceInvalidException&){
+				cand = _this->free_resources.pop();
+			}
 		}
 		//whoops, entirely full!
 		//just build a one-off resource
-		return LockedResource{std::unique_ptr<T>{_this->builder(std::forward<Args>(a)...)},_this};
+		return LockedResource{nullptr, _this, std::make_shared<overdrawn>(_this,std::unique_ptr<T>{_this->builder(std::forward<Args>(a)...)})};
 	}
 	
 	template<typename T, typename... Args>
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::state::acquire_new_preference(std::shared_ptr<state> _this, Args && ... a){
 		//no preference!
-		if (!_this->pool_full()){
+		if (!_this->preferred_full()){
 			//try to get a preference!
 			auto my_preference = (_this->recycled_indices.size() > 0 ?
 								  _this->recycled_indices.
@@ -88,17 +70,16 @@ namespace mutils {
 	template<typename T, typename... Args>
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::state::acquire_with_preference(std::shared_ptr<state> _this, std::shared_ptr<const index_owner> preference, Args && ... a){
 		//preference!
-		auto &my_resource = _this->resources.at(preference->indx);
-		/* try */{
-			lock l{my_resource.mut};
-			initialize_if_needed(my_resource,_this->builder,std::forward<Args>(a)...);
-			if (my_resource.resource){
-				return LockedResource{std::move(my_resource.resource),
-						_this,preference};
-			}
+		auto &my_resource = _this->preferred_resources.at(preference->indx);
+		try {
+			return LockedResource{
+				preference,
+					_this,
+					my_resource.borrow(_this,std::forward<Args>(a)...)};
 		}
-		//else (is implicit from early return)
-		return acquire_no_preference(_this,std::forward<Args>(a)...);
+		catch (const ResourceInvalidException&){
+			return acquire_no_preference(_this,std::forward<Args>(a)...);
+		}
 	}
 
 	/*

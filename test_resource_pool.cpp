@@ -8,7 +8,7 @@ void single_threaded_test(){
 	{
 	using LockedResource = typename ResourcePool<int>::LockedResource;
 	using WeakResource = typename ResourcePool<int>::WeakResource;
-	ResourcePool<int> pool{3,[](){return new int{0};}};
+	ResourcePool<int> pool{3,0,[](){return new int{0};}};
 	auto prefer_1 = [&](){
 		auto my_int = pool.acquire();
 		assert(*my_int == 0);
@@ -31,13 +31,13 @@ void single_threaded_test(){
 		assert(*ret.lock() == 3);
 		return ret;
 	}();
-	assert(pool.dbg_pool_full());
+	assert(pool.preferred_full());
 	assert(*prefer_2.lock() != 0);
 	assert(*prefer_1.lock() != 0);
 	assert(*prefer_3.lock() == 3);
 	assert(*prefer_2.lock() == 2);
 	assert(*prefer_1.lock() == 1);
-	assert(pool.dbg_pool_full());
+	assert(pool.preferred_full());
 	WeakResource orphan{[&](const auto &, const auto &, const auto&){
 			assert(*pool.acquire() == 0);
 			return pool.acquire();
@@ -81,7 +81,7 @@ void multi_threaded_test(){
 	};
 	using LockedResource = typename ResourcePool<Incrementor, int>::LockedResource;
 	using WeakResource = typename ResourcePool<Incrementor, int>::WeakResource;
-	ResourcePool<Incrementor, int> pool{30,[](int i){return new Incrementor{i};}};
+	ResourcePool<Incrementor, int> pool{30,0,[](int i){return new Incrementor{i};}};
 	std::vector<std::future<void> > futs;
 	for (int i = 0; i < 80; ++i){
 		futs.emplace_back(
@@ -95,7 +95,7 @@ void multi_threaded_test(){
 	}
 
 	auto state = pool.dbg_leak_state();
-	for (const auto &res : state->resources){
+	for (const auto &res : state->preferred_resources){
 		auto i = res.resource->i;
 		if (i < 50000) std::cout << i << std::endl;
 	}

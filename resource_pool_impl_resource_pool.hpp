@@ -11,6 +11,11 @@ namespace mutils{
 	}
 
 	template<typename T, typename... Args>
+	typename ResourcePool<T,Args...>::size_type ResourcePool<T,Args...>::number_free_resources() const {
+		
+	}
+
+	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::~ResourcePool(){
 		std::cout << "Resource pool usage statistics: " << std::endl
 				  << "Number overdraws: " << _state->number_overdraws << std::endl
