@@ -10,7 +10,7 @@ namespace mutils {
 		else if (index_preference){
 			auto to_return = 
 				parent->acquire_with_preference(parent,index_preference,std::forward<Args>(a)...);
-			*this = to_return;
+			//*this = to_return;
 			return to_return;
 		}
 		else {

@@ -102,6 +102,7 @@ namespace mutils{
 		struct rented_resource {
 			std::unique_ptr<T> t;
 			std::shared_ptr<state> parent;
+			virtual std::pair<std::size_t,std::string> which_resource_type() const = 0;
 			virtual ~rented_resource();
 			rented_resource(std::unique_ptr<T> t, std::shared_ptr<state> parent);
 		};
@@ -109,17 +110,23 @@ namespace mutils{
 		struct rented_preferred : public rented_resource{
 			const size_type index;
 			rented_preferred(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx);
+			std::pair<std::size_t,std::string> which_resource_type() const;
+			static std::pair<std::size_t,std::string> resource_type();
 			~rented_preferred();
 		};
 
 		struct overdrawn : public rented_resource{
 			overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp);
+			std::pair<std::size_t,std::string> which_resource_type() const;
+			static std::pair<std::size_t,std::string> resource_type();
 			~overdrawn();
 		};
 
 		struct rented_spare : public rented_resource{
 			const size_type index;
 			rented_spare(std::shared_ptr<state> sp, std::unique_ptr<T> tp, size_type indx);
+			std::pair<std::size_t,std::string> which_resource_type() const;
+			static std::pair<std::size_t,std::string> resource_type();
 			~rented_spare();
 		};
 		
@@ -144,6 +151,7 @@ namespace mutils{
 			LockedResource lock(const Args &...);
 			bool is_locked() const;
 			LockedResource acquire_if_locked() const;
+			std::pair<std::size_t,std::string> which_resource_type() const;
 			
 			explicit LockedResource(const WeakResource& wr);
 			friend class WeakResource;

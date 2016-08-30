@@ -60,6 +60,11 @@ namespace mutils {
 	}
 	
 	template<typename T, typename... Args>
+	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::LockedResource:: which_resource_type() const {
+		return rsource->which_resource_type();
+	}
+	
+	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::LockedResource::LockedResource(const WeakResource& wr)
 		:index_preference(wr.index_preference),
 		 parent(wr.parent),

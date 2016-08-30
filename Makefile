@@ -1,6 +1,6 @@
 .PHONY : clean
 
-CPPFLAGS=-fPIC -g --std=c++14
+CPPFLAGS=-fPIC -g --std=c++14 -I../mutils -L../mutils -DMAX_THREADS=10000
 LDFLAGS=-shared 
 
 SOURCES = FutureFreePool.cpp

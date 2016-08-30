@@ -10,6 +10,8 @@ namespace mutils {
 		}
 		for (std::size_t i = 0; i < max_spares; ++i){
 			spare_resources.emplace_back(i);
+		}
+		for (std::size_t i = 0; i < max_spares; ++i){
 			free_resources.add(&spare_resources.at(i));
 		}
 	}
@@ -28,6 +30,7 @@ namespace mutils {
 		while (cand){
 			try {
 				cand->remove_from_free_list();
+				assert(cand);
 				return LockedResource{nullptr, _this, cand->borrow(_this,std::forward<Args>(a)...)};
 			}
 			catch(const ResourceInvalidException&){
