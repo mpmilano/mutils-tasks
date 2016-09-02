@@ -134,9 +134,9 @@ namespace mutils{
 			std::shared_ptr<const index_owner> index_preference;
 			std::shared_ptr<state> parent;
 			std::shared_ptr<rented_resource> rsource;
+			LockedResource(const LockedResource&);
 			
 		public:
-			LockedResource(const LockedResource&) = delete;
 			LockedResource(std::shared_ptr<const index_owner> indx,
 						   std::shared_ptr<state> parent,
 						   std::shared_ptr<rented_resource> rsource);
@@ -152,7 +152,8 @@ namespace mutils{
 			bool is_locked() const;
 			LockedResource acquire_if_locked() const;
 			std::pair<std::size_t,std::string> which_resource_type() const;
-			
+
+			LockedResource clone();
 			explicit LockedResource(const WeakResource& wr);
 			friend class WeakResource;
 
