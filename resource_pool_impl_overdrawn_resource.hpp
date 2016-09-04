@@ -19,6 +19,7 @@ namespace mutils{
 	
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::overdrawn::~overdrawn(){
+		this->before_delete();
 		this->parent->overdrawn_count--;
 	}
 }

@@ -26,6 +26,7 @@ struct AssignOnce{
 		return val == t;
 	}
 	operator int() const {return val;}
+
 };
 
 void single_threaded_test(){
@@ -162,6 +163,17 @@ void multi_threaded_test(){
 			assert(m.try_lock());
 			std::unique_lock<std::mutex> lock{m, std::adopt_lock};
 			return ++i;
+		}
+
+		bool held{false};	
+		void onRelease() {
+			assert(held);
+			held = false;
+		}
+		
+		void onAcquire(int) {
+			assert(!held);
+			held = true;
 		}
 	};
 	using LockedResource = typename ResourcePool<Incrementor, int>::LockedResource;

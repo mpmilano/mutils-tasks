@@ -106,6 +106,8 @@ namespace mutils{
 			std::unique_ptr<T> t;
 			std::shared_ptr<state> parent;
 			virtual std::pair<std::size_t,std::string> which_resource_type() const = 0;
+			bool deleted{false};
+			void before_delete();
 			virtual ~rented_resource();
 			rented_resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, Args&&...);
 		};

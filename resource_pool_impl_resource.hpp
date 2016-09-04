@@ -26,11 +26,19 @@ namespace mutils{
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::rented_resource::rented_resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, Args&&... aaa)
 		:t(std::move(t)),parent(parent){
+		assert(this->t);
 		resource_pool_helpers::template on_acquire<T>(this->t.get(),std::forward<Args>(aaa)...);
 	}
 
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::rented_resource::~rented_resource(){
+		assert(deleted);
+	}
+	
+	template<typename T, typename... Args>
+	void ResourcePool<T,Args...>::rented_resource::before_delete(){
+		deleted = true;
+		assert(t);
 		resource_pool_helpers::template on_release<T>(t.get());
 	}
 
@@ -45,6 +53,7 @@ namespace mutils{
 
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::rented_preferred::~rented_preferred(){
+		this->before_delete();
 		assert(index < this->parent->max_resources);
 		lock l{this->parent->preferred_resources.at(index).mut};
 		who_owns_me = nullptr;
@@ -65,6 +74,7 @@ namespace mutils{
 
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::rented_spare::~rented_spare(){
+		this->before_delete();
 		this->parent->spare_resources.at(index).resource = std::move(this->t);
 		this->parent->free_resources.add(&this->parent->spare_resources.at(index));
 	}
