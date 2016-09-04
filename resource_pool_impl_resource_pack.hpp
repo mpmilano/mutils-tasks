@@ -37,9 +37,12 @@ namespace mutils{
 		lock l{mut};
 		initialize_if_needed(*this,s->builder,std::forward<Args>(a)...);
 		if (this->resource){
-			return std::make_shared<rented_preferred>(std::move(this->resource),s,this->index);
+			return std::make_shared<rented_preferred>(std::move(this->resource),s,this->index,who_owns_me,std::forward<Args>(a)...);
 		}
-		else throw ResourceInvalidException{};
+		else {
+			assert(who_owns_me);
+			throw ResourceInvalidException{};
+		}
 	}
 
 	template<typename T, typename... Args>

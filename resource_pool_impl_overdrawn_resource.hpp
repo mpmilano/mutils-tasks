@@ -4,8 +4,8 @@ namespace mutils{
 
 
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::overdrawn::overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp)
-		:rented_resource(std::move(tp), sp){
+	ResourcePool<T,Args...>::overdrawn::overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp, Args&&... aaa)
+		:rented_resource(std::move(tp), sp, std::forward<Args>(aaa)...){
 		auto over_by = ++this->parent->overdrawn_count;
 		while (this->parent->max_overdraw < over_by) {
 			auto cand = this->parent->max_overdraw.load();

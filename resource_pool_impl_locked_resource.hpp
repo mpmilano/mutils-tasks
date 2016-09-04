@@ -65,7 +65,7 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::LockedResource::clone(){
+	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::LockedResource::clone(){
 		return LockedResource(*this);
 	}
 	

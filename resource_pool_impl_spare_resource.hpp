@@ -16,6 +16,6 @@ namespace mutils{
 	ResourcePool<T,Args...>::spare_resource::borrow(std::shared_ptr<state> s, Args && ... a){
 		initialize_if_needed(*this,s->builder,std::forward<Args>(a)...);
 		assert(this->resource);
-		return std::make_shared<rented_spare>(s,std::move(this->resource),this->index);
+		return std::make_shared<rented_spare>(s,std::move(this->resource),this->index,std::forward<Args>(a)...);
 	}
 }

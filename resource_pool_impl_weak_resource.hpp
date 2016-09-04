@@ -23,6 +23,8 @@ namespace mutils {
 
 	template<typename T, typename... Args>
 	bool ResourcePool<T,Args...>::WeakResource::is_locked() const {
+		assert([&]() -> bool {bool b = rsource.lock() && true;
+				return b == !rsource.expired();}());
 		return !rsource.expired();
 	}
 

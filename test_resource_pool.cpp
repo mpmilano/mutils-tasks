@@ -1,14 +1,37 @@
 #include <iostream>
 #include <future>
+#define private public
 #include "resource_pool.hpp"
+#include "extras"
 
 using namespace mutils;
 
+bool unique(){ return true;}
+
+template<typename Fst, typename... Rst>
+bool unique(const Fst &fst, const Rst&... rst){
+	auto neq = [&](auto &rst){return fst != rst;};
+	return forall(neq(rst)...) && unique(rst...);
+}
+
+struct AssignOnce{
+	int val{0};
+	auto operator=(int i){
+		assert(val == 0);
+		assert(i != 0);
+		return val = i;
+	}
+	template<typename T>
+	bool operator==(const T &t) const {
+		return val == t;
+	}
+	operator int() const {return val;}
+};
+
 void single_threaded_test(){
-	{
-	using LockedResource = typename ResourcePool<int>::LockedResource;
-	using WeakResource = typename ResourcePool<int>::WeakResource;
-	ResourcePool<int> pool{3,2,[](){return new int{0};}};
+	using LockedResource = typename ResourcePool<AssignOnce>::LockedResource;
+	using WeakResource = typename ResourcePool<AssignOnce>::WeakResource;
+	ResourcePool<AssignOnce> pool{3,2,[](){return new AssignOnce();}};
 	auto prefer_1 = [&](){
 		auto my_int = pool.acquire();
 		assert(*my_int == 0);
@@ -34,6 +57,13 @@ void single_threaded_test(){
 	assert(pool.preferred_full());
 	assert(*prefer_2.lock() != 0);
 	assert(*prefer_1.lock() != 0);
+	assert(*prefer_3.lock() == 3);
+	assert(*prefer_2.lock() == 2);
+    prefer_2.lock();
+	assert(*prefer_1.lock() == 1);
+	const int index_1 = prefer_1.index_preference->indx;
+	const int index_2 = prefer_2.index_preference->indx;
+	const int index_3 = prefer_3.index_preference->indx;
 	assert(*prefer_3.lock() == 3);
 	assert(*prefer_2.lock() == 2);
 	assert(*prefer_1.lock() == 1);
@@ -80,12 +110,12 @@ void single_threaded_test(){
 		*hold_first_shared = 5;
 		assert(state->free_resources.size() == 4);
 
-		assert(ResourcePool<int>::rented_spare::resource_type() == hold_first_shared.which_resource_type());
+		assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == hold_first_shared.which_resource_type());
 		
 		
 		WeakResource spare{[&](const auto &, const auto &, const auto&){
 				auto l = pool.acquire();
-				assert(ResourcePool<int>::rented_spare::resource_type() == l.which_resource_type());
+				assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == l.which_resource_type());
 				assert(*l == 0);
 				*l = 4;
 				return l;
@@ -94,12 +124,24 @@ void single_threaded_test(){
 		assert(state->free_resources.size() == 4);
 		assert(val > 0 && val <= 4);
 		auto locked_spare = spare.lock();
-		assert(ResourcePool<int>::rented_spare::resource_type() == locked_spare.which_resource_type()
-			   || ResourcePool<int>::rented_preferred::resource_type() == locked_spare.which_resource_type()
+		assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == locked_spare.which_resource_type()
+			   || ResourcePool<AssignOnce>::rented_preferred::resource_type() == locked_spare.which_resource_type()
 			);
+		
 		assert(*locked_spare > 0 || *locked_spare <= 4);
+		assert(!prefer_3.is_locked());
+		assert(!prefer_2.is_locked());
+		assert(!prefer_1.is_locked());
+		assert(unique(prefer_3.index_preference->indx,
+					  prefer_2.index_preference->indx,
+					  prefer_1.index_preference->indx
+				   ));
+		assert(prefer_3.index_preference->indx == index_3);
+		assert(prefer_2.index_preference->indx == index_2);
+		assert(prefer_1.index_preference->indx == index_1);
 		assert(*prefer_3.lock() == 3 || (*locked_spare == 3 && *prefer_3.lock() == 4));
-		assert(*prefer_2.lock() == 2 || (*locked_spare == 2 && *prefer_2.lock() == 4));
+        prefer_2.lock();
+        assert(*prefer_2.lock() == 2 || (*locked_spare == 2 && *prefer_2.lock() == 4));
 		assert(*prefer_1.lock() == 1 || (*locked_spare == 1 && *prefer_1.lock() == 4));
 		assert(*pool.acquire() != 0);
 	}
@@ -109,7 +151,7 @@ void single_threaded_test(){
 		}(prefer_1.lock(), prefer_2.lock(),prefer_3.lock())};
 	assert(*spare.lock() == 4 || *spare.lock() == 5);
 }
-}
+
 
 void multi_threaded_test(){
 	struct Incrementor{

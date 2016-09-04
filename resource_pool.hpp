@@ -35,8 +35,11 @@ namespace mutils{
 		protected: virtual ~resource_pack() {};
 		};
 
+		struct rented_preferred;
+
 		struct preferred_resource : public resource_pack{
 			std::mutex mut;
+			rented_preferred* who_owns_me{nullptr};
 			bool in_free_list{false};
 			preferred_resource(std::size_t ind);
 			preferred_resource(preferred_resource&&);
@@ -104,19 +107,21 @@ namespace mutils{
 			std::shared_ptr<state> parent;
 			virtual std::pair<std::size_t,std::string> which_resource_type() const = 0;
 			virtual ~rented_resource();
-			rented_resource(std::unique_ptr<T> t, std::shared_ptr<state> parent);
+			rented_resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, Args&&...);
 		};
 
 		struct rented_preferred : public rented_resource{
+			using this_p = rented_preferred*;
+			this_p& who_owns_me;
 			const size_type index;
-			rented_preferred(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx);
+			rented_preferred(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx, this_p& who_owns_me, Args&&...);
 			std::pair<std::size_t,std::string> which_resource_type() const;
 			static std::pair<std::size_t,std::string> resource_type();
 			~rented_preferred();
 		};
 
 		struct overdrawn : public rented_resource{
-			overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp);
+			overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp, Args&&...);
 			std::pair<std::size_t,std::string> which_resource_type() const;
 			static std::pair<std::size_t,std::string> resource_type();
 			~overdrawn();
@@ -124,13 +129,14 @@ namespace mutils{
 
 		struct rented_spare : public rented_resource{
 			const size_type index;
-			rented_spare(std::shared_ptr<state> sp, std::unique_ptr<T> tp, size_type indx);
+			rented_spare(std::shared_ptr<state> sp, std::unique_ptr<T> tp, size_type indx, Args&&...);
 			std::pair<std::size_t,std::string> which_resource_type() const;
 			static std::pair<std::size_t,std::string> resource_type();
 			~rented_spare();
 		};
 		
 		class LockedResource{
+		private:
 			std::shared_ptr<const index_owner> index_preference;
 			std::shared_ptr<state> parent;
 			std::shared_ptr<rented_resource> rsource;
@@ -159,6 +165,7 @@ namespace mutils{
 
 		};
 		class WeakResource{
+		private:
 			std::shared_ptr<const index_owner> index_preference;
 			std::shared_ptr<state> parent;
 			std::weak_ptr<rented_resource> rsource;
