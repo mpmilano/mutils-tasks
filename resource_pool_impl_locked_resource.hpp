@@ -23,7 +23,7 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
-	T const * const ResourcePool<T,Args...>::LockedResource::operator->() const {
+	const T * ResourcePool<T,Args...>::LockedResource::operator->() const {
 		return rsource->t.get();
 	}
 	

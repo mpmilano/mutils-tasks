@@ -35,8 +35,9 @@ namespace mutils{
 		protected: virtual ~resource_pack() {};
 		};
 
+	public:
 		struct rented_preferred;
-
+	private:
 		struct preferred_resource : public resource_pack{
 			std::mutex mut;
 			rented_preferred* who_owns_me{nullptr};
@@ -150,7 +151,7 @@ namespace mutils{
 						   std::shared_ptr<rented_resource> rsource);
 			LockedResource(LockedResource&& o);
 
-			T const * const operator->() const;
+			const T * operator->() const;
 			T* operator->();
 
 			T& operator*();
