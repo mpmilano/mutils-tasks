@@ -27,7 +27,7 @@ namespace mutils{
 	ResourcePool<T,Args...>::rented_resource::rented_resource(std::unique_ptr<T> t, std::shared_ptr<state> parent, Args&&... aaa)
 		:t(std::move(t)),parent(parent){
 		assert(this->t);
-		resource_pool_helpers::template on_acquire<T>(this->t.get(),std::forward<Args>(aaa)...);
+		resource_pool_helpers::template on_acquire<T,Args...>(this->t.get(),std::forward<Args>(aaa)...);
 	}
 
 	template<typename T, typename... Args>
