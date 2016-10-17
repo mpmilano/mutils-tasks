@@ -68,6 +68,11 @@ namespace mutils {
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::LockedResource::clone(){
 		return LockedResource(*this);
 	}
+
+	template<typename T, typename... Args>
+	typename ResourcePool<T,Args...>::WeakResource ResourcePool<T,Args...>::LockedResource::weak(){
+		return WeakResource(*this);
+	}
 	
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::LockedResource::LockedResource(const LockedResource& o)

@@ -163,6 +163,7 @@ namespace mutils{
 			std::pair<std::size_t,std::string> which_resource_type() const;
 
 			LockedResource clone();
+			WeakResource weak();
 			explicit LockedResource(const WeakResource& wr);
 			friend class WeakResource;
 
