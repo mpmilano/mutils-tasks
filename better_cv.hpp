@@ -29,11 +29,15 @@ namespace mutils{
 			 my_id(std::this_thread::get_id()),
 			 who(o.who)
 			{}
-		
-		~condition_held(){
+
+		void unlock(){
 			who = nullptr;
 			l.unlock();
 			v.notify_all();
+		}
+		
+		~condition_held(){
+			unlock();
 		}
 	};
 	
