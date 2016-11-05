@@ -11,13 +11,23 @@ namespace mutils{
 		
 		struct abortable_mutex{
 			abortable_locked_guardian &parent;
-			void lock(){
+			abortable_mutex(abortable_locked_guardian &parent):parent(parent){}
+#ifndef NDEBUG
+			std::mutex m;
+#endif
+			auto lock(){
 				//WARNING: assuming cv.m is held by us at this point.
 				parent.critical_region_occupied = true;
+#ifndef NDEBUG
+				return m.lock();
+#endif
 			}
-			void unlock(){
+			auto unlock(){
 				parent.critical_region_occupied = false;
 				parent.cv.v.notify_all();
+#ifndef NDEBUG
+				return m.unlock();
+#endif
 			}
 		};
 		
