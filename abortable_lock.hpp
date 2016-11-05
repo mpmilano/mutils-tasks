@@ -37,6 +37,7 @@ namespace mutils{
 				return std::make_unique<lock_t>(am);
 			}
 			else assert(false && "woke up early, but that's not supposed be possible with C++ condition variables");
+			throw "woke up early, but that's not supposed be possible with C++ condition variables";
 		}
 	};
 };

@@ -32,6 +32,7 @@ namespace mutils{
 		pending[pos] = GlobalPool::push([fun,ase2 = std::move(ase)](int i){
 				fun(i);
 				assert(ase2.assert_this());
+				(void)ase2;
 			});
 	}
 }

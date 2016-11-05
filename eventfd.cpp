@@ -14,14 +14,20 @@ namespace mutils {
 	}
 	void eventfd::wait(){
 		buf_t buf{0};
-		auto result = read(fd,&buf,sizeof(buf));
+#ifndef NDEBUG
+		auto result =
+#endif
+			read(fd,&buf,sizeof(buf));
 		assert(result == 0);
 	}
 
 
 	void eventfd::notify(){
 		buf_t buf{1};
-		auto result = write(fd,&buf,sizeof(buf));
+#ifndef NDEBUG
+		auto result =
+#endif
+			write(fd,&buf,sizeof(buf));
 		assert(result == 0);
 	}
 

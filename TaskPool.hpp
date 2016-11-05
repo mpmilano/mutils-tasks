@@ -139,6 +139,9 @@ namespace mutils{
 				return default_on_exn<Ret>::value;
 			}
 			assert(false && "exn handler called with no currrent exception?");
+			//should be dead code!
+			struct dead_code{};
+			throw dead_code{};
 		}
 	};
 	
