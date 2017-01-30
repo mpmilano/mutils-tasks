@@ -2,8 +2,9 @@
 
 namespace mutils {
 		template<typename T, typename... Args>
-		ResourcePool<T,Args...>::state::state(size_type max_resources, size_type max_spares, const decltype(builder) &builder)
-		:max_resources(max_resources),
+		ResourcePool<T,Args...>::state::state(size_type max_resources, size_type max_spares, const decltype(builder) &builder, bool allow_overdraws)
+			:allow_overdraws(allow_overdraws),
+			 max_resources(max_resources),
 		 builder(builder){
 		for (std::size_t i = 0; i < max_resources; ++i){
 			preferred_resources.emplace_back(i);
@@ -26,20 +27,33 @@ namespace mutils {
 	template<typename T, typename... Args>	
 	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::state::acquire_no_preference(std::shared_ptr<state> _this, Args && ... a){
 		//don't even try to get a preference
-		auto *cand = _this->free_resources.pop();
-		while (cand){
-			try {
-				cand->remove_from_free_list();
-				assert(cand);
-				return LockedResource{nullptr, _this, cand->borrow(_this,std::forward<Args>(a)...)};
-			}
-			catch(const ResourceInvalidException&){
-				cand = _this->free_resources.pop();
-			}
+#define acquire_no_preference_internal_23847892784(pop_type)	\
+		auto *cand = _this->free_resources.pop_type();						\
+		while (cand){																		\
+			try {																					\
+				cand->remove_from_free_list();							\
+				assert(cand);																										\
+				return LockedResource{nullptr, _this, cand->borrow(_this,std::forward<Args>(a)...)}; \
+			}																																	\
+			catch(const ResourceInvalidException&){														\
+				cand = _this->free_resources.pop_type();												\
+			}																																	\
+		}																																		\
+
+		{
+			acquire_no_preference_internal_23847892784(pop);
 		}
-		//whoops, entirely full!
-		//just build a one-off resource
-		return LockedResource{nullptr, _this, std::make_shared<overdrawn>(_this,std::unique_ptr<T>{_this->builder(std::forward<Args>(a)...)},std::forward<Args>(a)...)};
+		if (_this->allow_overdraws){
+			//whoops, entirely full!
+			//just build a one-off resource
+			return LockedResource{nullptr, _this, std::make_shared<overdrawn>(_this,std::unique_ptr<T>{_this->builder(std::forward<Args>(a)...)},std::forward<Args>(a)...)};
+		}
+		else {
+			//do the acquire song-and-dance again, except this time block on pop when empty
+			acquire_no_preference_internal_23847892784(pop_blocking);
+		}
+		struct this_is_not_possible_exn {};
+		throw this_is_not_possible_exn{};
 	}
 	
 	template<typename T, typename... Args>

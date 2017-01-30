@@ -11,11 +11,23 @@ namespace mutils{
 			return "ResourceInvalidException";
 		}
 	};
+
+	//resources are initialized lazily.
+	//three sorts of resources: preferred try and reclaim the resource they had before,
+	//spare resources don't care,
+	//and overdrawn resources are destroyed immediately after use.
+	//I don't think there's any way to destroy resources at this point without
+	//also destroying the pool itself. 
 	
 	template<typename T, typename... Args>
 	class ResourcePool{
 
 	public:
+		
+		enum class resource_type {
+			overdrawn,spare,preferred
+		};
+		
 		class LockedResource;
 		class WeakResource;
 		struct index_owner;
@@ -60,6 +72,7 @@ namespace mutils{
 		using lock = std::unique_lock<std::mutex>;
 		
 		struct state {
+			const bool allow_overdraws;
 			resources_vector preferred_resources;
 			const size_type max_resources;
 			std::atomic<size_type> current_max_index{0};
@@ -73,7 +86,7 @@ namespace mutils{
 			std::atomic_ullong number_overdraws{0};
 			std::atomic_ullong sum_overdraws{0};
 			
-			state(size_type max_resources, size_type max_spares, const decltype(builder) &builder);
+			state(size_type max_resources, size_type max_spares, const decltype(builder) &builder, bool allow_overdraws);
 			//~state();
 
 			bool preferred_full() const;
@@ -90,7 +103,7 @@ namespace mutils{
 
 		auto dbg_leak_state() { return _state;}
 		
-		ResourcePool(size_type max_resources, size_type max_spares, const decltype(state::builder) &builder);
+		ResourcePool(size_type max_resources, size_type max_spares, const decltype(state::builder) &builder, bool allow_overdraws=true);
 		
 		ResourcePool(const ResourcePool&) = delete;
 
@@ -106,7 +119,7 @@ namespace mutils{
 		struct rented_resource {
 			std::unique_ptr<T> t;
 			std::shared_ptr<state> parent;
-			virtual std::pair<std::size_t,std::string> which_resource_type() const = 0;
+			virtual std::pair<std::size_t,resource_type> which_resource_type() const = 0;
 			bool deleted{false};
 			void before_delete();
 			virtual ~rented_resource();
@@ -118,23 +131,23 @@ namespace mutils{
 			this_p& who_owns_me;
 			const size_type index;
 			rented_preferred(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx, this_p& who_owns_me, Args&&...);
-			std::pair<std::size_t,std::string> which_resource_type() const;
-			static std::pair<std::size_t,std::string> resource_type();
+			std::pair<std::size_t,resource_type> which_resource_type() const;
+			static std::pair<std::size_t,resource_type> resource_type();
 			~rented_preferred();
 		};
 
 		struct overdrawn : public rented_resource{
 			overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp, Args&&...);
-			std::pair<std::size_t,std::string> which_resource_type() const;
-			static std::pair<std::size_t,std::string> resource_type();
+			std::pair<std::size_t,resource_type> which_resource_type() const;
+			static std::pair<std::size_t,resource_type> resource_type();
 			~overdrawn();
 		};
 
 		struct rented_spare : public rented_resource{
 			const size_type index;
 			rented_spare(std::shared_ptr<state> sp, std::unique_ptr<T> tp, size_type indx, Args&&...);
-			std::pair<std::size_t,std::string> which_resource_type() const;
-			static std::pair<std::size_t,std::string> resource_type();
+			std::pair<std::size_t,resource_type> which_resource_type() const;
+			static std::pair<std::size_t,resource_type> resource_type();
 			~rented_spare();
 		};
 		
@@ -160,7 +173,7 @@ namespace mutils{
 			LockedResource lock(const Args &...);
 			bool is_locked() const;
 			LockedResource acquire_if_locked() const;
-			std::pair<std::size_t,std::string> which_resource_type() const;
+			std::pair<std::size_t,resource_type> which_resource_type() const;
 
 			LockedResource clone();
 			WeakResource weak();

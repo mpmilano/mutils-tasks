@@ -60,7 +60,7 @@ namespace mutils {
 	}
 	
 	template<typename T, typename... Args>
-	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::LockedResource:: which_resource_type() const {
+	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::LockedResource:: which_resource_type() const {
 		return rsource->which_resource_type();
 	}
 

@@ -80,37 +80,34 @@ namespace mutils{
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::rented_preferred::which_resource_type() const {
-		auto &tmp = typeid(*this);
-		return std::make_pair(tmp.hash_code(),std::string{tmp.name()});
+	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::rented_preferred::which_resource_type() const {
+		return resource_type();
 	}
 	template<typename T, typename... Args>
-	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::rented_spare::which_resource_type() const {
-		auto &tmp = typeid(*this);
-		return std::make_pair(tmp.hash_code(),std::string{tmp.name()});
+	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::rented_spare::which_resource_type() const {
+		return resource_type();
 	}
 	template<typename T, typename... Args>
-	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::overdrawn::which_resource_type() const {
-		auto &tmp = typeid(*this);
-		return std::make_pair(tmp.hash_code(),std::string{tmp.name()});
+	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::overdrawn::which_resource_type() const {
+		return resource_type();
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::rented_preferred::resource_type(){
+	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::rented_preferred::resource_type(){
 		auto &tmp = typeid(rented_preferred);
-		return std::make_pair(tmp.hash_code(),std::string{tmp.name()});
+		return std::make_pair(tmp.hash_code(),ResourcePool::resource_type::preferred);
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::rented_spare::resource_type(){
+	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::rented_spare::resource_type(){
 		auto &tmp = typeid(rented_spare);
-		return std::make_pair(tmp.hash_code(),std::string{tmp.name()});
+		return std::make_pair(tmp.hash_code(),ResourcePool::resource_type::spare);
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t,std::string> ResourcePool<T,Args...>::overdrawn::resource_type(){
+	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::overdrawn::resource_type(){
 		auto &tmp = typeid(overdrawn);
-		return std::make_pair(tmp.hash_code(),std::string{tmp.name()});
+		return std::make_pair(tmp.hash_code(),ResourcePool::resource_type::overdrawn);
 	}
 	
 }
