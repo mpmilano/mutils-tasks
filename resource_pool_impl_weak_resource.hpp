@@ -1,12 +1,16 @@
 #pragma once
+#include "resource_pool_WeakResource.hpp"
 
 namespace mutils {
+
+	namespace resource_pool{
+	
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::WeakResource::lock(Args && ... a){
+	LockedResource<T,Args...> WeakResource<T,Args...>::lock(Args && ... a){
 		assert(parent);
 		auto locked = rsource.lock();
 		if ((locked && locked->t))
-			return LockedResource(*this);
+			return LockedResource<T,Args...>(*this);
 		else if (index_preference){
 			auto to_return = 
 				parent->acquire_with_preference(parent,index_preference,std::forward<Args>(a)...);
@@ -22,24 +26,24 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
-	bool ResourcePool<T,Args...>::WeakResource::is_locked() const {
+	bool WeakResource<T,Args...>::is_locked() const {
 		assert([&]() -> bool {bool b = rsource.lock() && true;
 				return b == !rsource.expired();}());
 		return !rsource.expired();
 	}
 
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::WeakResource::acquire_if_locked() const {
+	LockedResource<T,Args...> WeakResource<T,Args...>::acquire_if_locked() const {
 		auto rlocked = rsource.lock();
 		if (rlocked){
-			return LockedResource{*this};
+			return LockedResource<T,Args...>{*this};
 		}
 		else throw ResourceInvalidException{};
 	}
 
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::WeakResource&
-	ResourcePool<T,Args...>::WeakResource::operator=(const LockedResource& lr)
+	WeakResource<T,Args...>&
+	WeakResource<T,Args...>::operator=(const LockedResource<T,Args...>& lr)
 	{
 		index_preference = lr.index_preference;
 		parent = lr.parent;
@@ -52,7 +56,7 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::WeakResource::WeakResource(const LockedResource& lr)
+	WeakResource<T,Args...>::WeakResource(const LockedResource<T,Args...>& lr)
 		:index_preference(lr.index_preference),
 		 parent(lr.parent),
 		 rsource(lr.rsource)
@@ -64,7 +68,7 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::WeakResource::WeakResource(WeakResource&& o)
+	WeakResource<T,Args...>::WeakResource(WeakResource&& o)
 		:index_preference(o.index_preference),
 		 parent(o.parent),
 		 rsource(o.rsource)
@@ -73,4 +77,5 @@ namespace mutils {
 		o.parent.reset();
 		o.rsource.reset();
 	}
+}
 }

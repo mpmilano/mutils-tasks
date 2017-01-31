@@ -1,4 +1,5 @@
 #pragma once
+#include "resource_pool.hpp"
 
 namespace mutils{
 	template<typename T, typename... Args>
@@ -12,11 +13,12 @@ namespace mutils{
 
 	template<typename T, typename... Args>
 	typename ResourcePool<T,Args...>::size_type ResourcePool<T,Args...>::number_free_resources() const {
-		
+		assert(false && "I am guessing this was implemented at some point, right?");
 	}
 
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::~ResourcePool(){
+		assert(false && "remember to put in the waiter stat");
 		std::cout << "Resource pool usage statistics: " << std::endl
 				  << "Number overdraws: " << _state->number_overdraws << std::endl
 				  << "Max overdraw: " << _state->max_overdraw << std::endl

@@ -1,11 +1,12 @@
 #pragma once
+#include "resource_pool_rented_resources.hpp"
 
 namespace mutils{
-
+	namespace resource_pool{
 
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::overdrawn::overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp, Args&&... aaa)
-		:rented_resource(std::move(tp), sp, std::forward<Args>(aaa)...){
+	overdrawn<T,Args...>::overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp, Args&&... aaa)
+		:rented_resource<T,Args...>(std::move(tp), sp, std::forward<Args>(aaa)...){
 		auto over_by = ++this->parent->overdrawn_count;
 		while (this->parent->max_overdraw < over_by) {
 			auto cand = this->parent->max_overdraw.load();
@@ -18,8 +19,9 @@ namespace mutils{
 	}
 	
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::overdrawn::~overdrawn(){
+	overdrawn<T,Args...>::~overdrawn(){
 		this->before_delete();
 		this->parent->overdrawn_count--;
 	}
+}
 }

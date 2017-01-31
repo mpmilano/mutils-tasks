@@ -1,8 +1,14 @@
 #pragma once
+#include "resource_pool_state.hpp"
+#include "resource_pool_LockedResource.hpp"
+#include "resource_pool_rented_resources.hpp"
 
 namespace mutils {
+	namespace resource_pool {
 		template<typename T, typename... Args>
-		ResourcePool<T,Args...>::state::state(size_type max_resources, size_type max_spares, const decltype(builder) &builder, bool allow_overdraws)
+		pool_state<T,Args...>::pool_state(typename pool_state<T,Args...>::size_type max_resources,
+																			typename pool_state<T,Args...>::size_type max_spares,
+																			const decltype(builder) &builder, bool allow_overdraws)
 			:allow_overdraws(allow_overdraws),
 			 max_resources(max_resources),
 		 builder(builder){
@@ -18,14 +24,14 @@ namespace mutils {
 	}
 	
 	template<typename T, typename... Args>
-	bool ResourcePool<T,Args...>::state::preferred_full() const {
+	bool pool_state<T,Args...>::preferred_full() const {
 		assert(this);
 		return max_resources < (current_max_index + 1)
 			&& recycled_indices.size() == 0;
 	}
 
 	template<typename T, typename... Args>	
-	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::state::acquire_no_preference(std::shared_ptr<state> _this, Args && ... a){
+	typename pool_state<T,Args...>::LockedResource pool_state<T,Args...>::acquire_no_preference(std::shared_ptr<pool_state> _this, Args && ... a){
 		//don't even try to get a preference
 #define acquire_no_preference_internal_23847892784(pop_type)	\
 		auto *cand = _this->free_resources.pop_type();						\
@@ -57,7 +63,7 @@ namespace mutils {
 	}
 	
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::state::acquire_new_preference(std::shared_ptr<state> _this, Args && ... a){
+	typename pool_state<T,Args...>::LockedResource pool_state<T,Args...>::acquire_new_preference(std::shared_ptr<pool_state> _this, Args && ... a){
 		//no preference!
 		if (!_this->preferred_full()){
 			//try to get a preference!
@@ -85,7 +91,7 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::state::acquire_with_preference(std::shared_ptr<state> _this, std::shared_ptr<const index_owner> preference, Args && ... a){
+	typename pool_state<T,Args...>::LockedResource pool_state<T,Args...>::acquire_with_preference(std::shared_ptr<pool_state> _this, std::shared_ptr<const index_owner> preference, Args && ... a){
 		//preference!
 		auto &my_resource = _this->preferred_resources.at(preference->indx);
 		try {
@@ -101,5 +107,6 @@ namespace mutils {
 
 	/*
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::state::~state(){} //*/
+	typename pool_state<T,Args...>::~state(){} //*/
+}
 }

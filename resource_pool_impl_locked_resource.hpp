@@ -1,9 +1,9 @@
 #pragma once
 
 namespace mutils {
-		
+	namespace resource_pool {	
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::LockedResource::LockedResource(std::shared_ptr<const index_owner> indx, std::shared_ptr<state> parent, std::shared_ptr<rented_resource> rsource)
+	LockedResource<T,Args...>::LockedResource(std::shared_ptr<const index_owner> indx, std::shared_ptr<state> parent, std::shared_ptr<rented_resource> rsource)
 		:index_preference(indx),
 		 parent(parent),
 		 rsource(rsource){
@@ -11,7 +11,7 @@ namespace mutils {
 	}
 	
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::LockedResource::LockedResource(LockedResource&& o)
+	LockedResource<T,Args...>::LockedResource(LockedResource&& o)
 		:index_preference(o.index_preference),
 		 parent(o.parent),
 		 rsource(o.rsource)
@@ -23,66 +23,66 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
-	const T * ResourcePool<T,Args...>::LockedResource::operator->() const {
+	const T * LockedResource<T,Args...>::operator->() const {
 		return rsource->t.get();
 	}
 	
 	template<typename T, typename... Args>
-	T* ResourcePool<T,Args...>::LockedResource::operator->() {
+	T* LockedResource<T,Args...>::operator->() {
 		return rsource->t.get();
 	}
 	
 	template<typename T, typename... Args>
-	T& ResourcePool<T,Args...>::LockedResource::operator*() {
+	T& LockedResource<T,Args...>::operator*() {
 		return *rsource->t;
 	}
 	
 	template<typename T, typename... Args>
-	const T& ResourcePool<T,Args...>::LockedResource::operator&() const {
+	const T& LockedResource<T,Args...>::operator&() const {
 		return *rsource->t;
 	}
 
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::LockedResource
-	ResourcePool<T,Args...>::LockedResource::lock(const Args& ...){
+	LockedResource<T,Args...>
+	LockedResource<T,Args...>::lock(const Args& ...){
 		return acquire_if_locked();
 	}
 
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::LockedResource
-	ResourcePool<T,Args...>::LockedResource::acquire_if_locked() const {
-		return LockedResource{WeakResource{*this}};
+	LockedResource<T,Args...>
+	LockedResource<T,Args...>::acquire_if_locked() const {
+		return LockedResource{WeakResource<T,Args...>{*this}};
 	}
 
 	template<typename T, typename... Args>
-	bool ResourcePool<T,Args...>::LockedResource::is_locked() const {
+	bool LockedResource<T,Args...>::is_locked() const {
 		return true;
 	}
 	
 	template<typename T, typename... Args>
-	std::pair<std::size_t,typename ResourcePool<T,Args...>::resource_type> ResourcePool<T,Args...>::LockedResource:: which_resource_type() const {
+	std::pair<std::size_t,resource_type> LockedResource<T,Args...>:: which_resource_type() const {
 		return rsource->which_resource_type();
 	}
 
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::LockedResource ResourcePool<T,Args...>::LockedResource::clone(){
+	LockedResource<T,Args...> LockedResource<T,Args...>::clone(){
 		return LockedResource(*this);
 	}
 
 	template<typename T, typename... Args>
-	typename ResourcePool<T,Args...>::WeakResource ResourcePool<T,Args...>::LockedResource::weak(){
-		return WeakResource(*this);
+	WeakResource<T,Args...> LockedResource<T,Args...>::weak(){
+		return WeakResource<T,Args...>(*this);
 	}
 	
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::LockedResource::LockedResource(const LockedResource& o)
+	LockedResource<T,Args...>::LockedResource(const LockedResource& o)
 		:index_preference(o.index_preference),
 		 parent(o.parent),
 		 rsource(o.rsource)
 	{}
 	
 	template<typename T, typename... Args>
-	ResourcePool<T,Args...>::LockedResource::LockedResource(const WeakResource& wr)
+	LockedResource<T,Args...>::LockedResource(const WeakResource<T,Args...>& wr)
 		:index_preference(wr.index_preference),
 		 parent(wr.parent),
 		 rsource(wr.rsource.lock())
@@ -92,5 +92,5 @@ namespace mutils {
 		assert(index_preference ? index_preference.use_count() > 1 : true);
 		assert(index_preference ? wr.index_preference.use_count() > 1 : true);
 	}
-
+	}
 }
