@@ -15,11 +15,12 @@ namespace mutils{
 
 		template<typename T, typename... Args>
 		auto on_acquire(T* t, Args&&... args)
-			-> decltype(t->onAcquire(std::forward<Args>(args)...))
+			-> decltype(t->onAcquire(std::declval<Args>()...))
 		{
 			return t->onAcquire(std::forward<Args>(args)...);
 		}
 
+		
 		template<typename, typename... Args>
 		auto on_acquire(void*,const Args&...) -> void {}
 	}
