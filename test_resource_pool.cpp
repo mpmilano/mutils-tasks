@@ -181,11 +181,15 @@ void multi_threaded_test(){
 	ResourcePool<Incrementor, int> pool{30,10,[](int i){return new Incrementor{i};}};
 	std::vector<std::future<void> > futs;
 	for (int i = 0; i < 80; ++i){
+		auto acquired = pool.acquire(std::move(i));
+		assert(acquired->held == true);
 		futs.emplace_back(
 			std::async(std::launch::async,
-					   [i, weak_resource = WeakResource{pool.acquire(std::move(i))}]()  mutable {
-						   while (weak_resource.lock(std::move(i))->incr() < 50000);
-					   }));
+								 [i, weak_resource = WeakResource{std::move(acquired)}]()  mutable {
+									 auto locked_resource = weak_resource.lock(std::move(i));
+									 assert(locked_resource->held == true);
+									 while (locked_resource->incr() < 50000);
+								 }));
 	}
 	for (auto& fut : futs){
 		fut.get();

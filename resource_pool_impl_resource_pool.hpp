@@ -18,12 +18,14 @@ namespace mutils{
 
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::~ResourcePool(){
-		assert(false && "remember to put in the waiter stat");
+#ifndef NDEBUG
 		std::cout << "Resource pool usage statistics: " << std::endl
+							<< "Number waiters: " << _state->number_waiters << std::endl
 				  << "Number overdraws: " << _state->number_overdraws << std::endl
 				  << "Max overdraw: " << _state->max_overdraw << std::endl
 				  << "Average overdraw: "
 				  << (_state->sum_overdraws /
 					  (1 + _state->number_overdraws)) << std::endl;
+#endif
 	}
 }

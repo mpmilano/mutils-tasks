@@ -28,6 +28,7 @@ namespace mutils{
 			std::atomic_ullong max_overdraw{0};
 			std::atomic_ullong number_overdraws{0};
 			std::atomic_ullong sum_overdraws{0};
+			std::atomic_ullong number_waiters{0};
 			
 			pool_state(size_type max_resources, size_type max_spares, const decltype(builder) &builder, bool allow_overdraws);
 			//~pool_state();

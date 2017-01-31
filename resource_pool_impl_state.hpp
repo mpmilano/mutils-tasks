@@ -56,6 +56,7 @@ namespace mutils {
 		}
 		else {
 			//do the acquire song-and-dance again, except this time block on pop when empty
+			++_this->number_waiters;
 			acquire_no_preference_internal_23847892784(pop_blocking);
 		}
 		struct this_is_not_possible_exn {};
