@@ -6,10 +6,11 @@ namespace mutils{
 	namespace resource_pool{
 	namespace {
 		template<typename resource_pack, typename F, typename... Args>
-		void initialize_if_needed(resource_pack& cand, const F& builder, Args && ... a){
+		void initialize_if_needed(const typename resource_pack::lock&, resource_pack& cand, const F& builder, Args && ... a){
 			if (!cand.initialized){
-				cand.initialized = true;
 				cand.resource.reset(builder(std::forward<Args>(a)...));
+				assert(cand.resource);
+				cand.initialized = true;
 			}
 		}
 	}
@@ -37,9 +38,12 @@ namespace mutils{
 	std::shared_ptr<typename preferred_resource<T,Args...>::rented_resource>
 	preferred_resource<T,Args...>::borrow(std::shared_ptr<state> s, Args && ... a){
 		lock l{mut};
-		initialize_if_needed(*this,s->builder,std::forward<Args>(a)...);
+		initialize_if_needed(l,*this,s->builder,std::forward<Args>(a)...);
 		if (this->resource){
-			return std::make_shared<rented_preferred<T,Args...> >(std::move(this->resource),s,this->index,who_owns_me,std::forward<Args>(a)...);
+			auto ret = std::make_shared<rented_preferred<T,Args...> >(std::move(this->resource),s,this->index,who_owns_me,std::forward<Args>(a)...);
+			assert(who_owns_me);
+			assert(!this->resource);
+			return ret;
 		}
 		else {
 			assert(who_owns_me);

@@ -41,7 +41,9 @@ namespace mutils{
 			using decls = resource_pool_declarations<T,Args...>;
 			using rented_resource = typename decls::rented_resource;
 			using state = typename decls::state;
+			using lock = typename decls::lock;
 			
+			std::mutex mut;
 			spare_resource(std::size_t ind);
 			spare_resource(spare_resource&&);
 			void remove_from_free_list(){}
