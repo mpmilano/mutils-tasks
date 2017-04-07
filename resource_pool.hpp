@@ -47,6 +47,7 @@ namespace mutils{
 		using WeakResource = typename decls::WeakResource;
 		
 		LockedResource acquire(Args && ... a);
+		WeakResource acquire_weak();
 
 		size_type number_free_resources() const;
 		bool preferred_full() const { return _state->preferred_full();}

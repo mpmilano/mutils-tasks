@@ -22,6 +22,7 @@ namespace mutils{
 			LockedResource<T,Args...> acquire_if_locked() const;
 			WeakResource(const WeakResource&) = delete;
 			WeakResource(WeakResource&&);
+			explicit WeakResource(std::shared_ptr<state> parent);
 			WeakResource& operator=(const LockedResource<T,Args...>& lr);
 			explicit WeakResource(const LockedResource<T,Args...>& lr);
 

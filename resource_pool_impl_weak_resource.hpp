@@ -68,6 +68,14 @@ namespace mutils {
 	}
 
 	template<typename T, typename... Args>
+	WeakResource<T,Args...>::WeakResource(std::shared_ptr<state> parent)
+		:parent(parent)
+	{
+		assert(parent);
+	}
+
+
+	template<typename T, typename... Args>
 	WeakResource<T,Args...>::WeakResource(WeakResource&& o)
 		:index_preference(o.index_preference),
 		 parent(o.parent),
