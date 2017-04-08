@@ -1,6 +1,7 @@
 #pragma once
 #include "resource_pool_declarations.hpp"
 #include "resource_pool_resource_packs.hpp"
+#include "blockingconcurrentqueue.h"
 
 namespace mutils{
 	namespace resource_pool {
@@ -20,7 +21,7 @@ namespace mutils{
 			const size_type max_resources;
 			std::atomic<size_type> current_max_index{0};
 			SafeSet<size_type> recycled_indices;
-			SafeSet<resource_pack*> free_resources;
+			moodycamel::BlockingConcurrentQueue<resource_pack*> free_resources;
 			std::vector<spare_resource> spare_resources;
 			const std::function<T* (Args...)> builder;
 			//for debugging, mostly.

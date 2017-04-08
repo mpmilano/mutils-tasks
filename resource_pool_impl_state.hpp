@@ -19,7 +19,7 @@ namespace mutils {
 			spare_resources.emplace_back(i);
 		}
 		for (std::size_t i = 0; i < max_spares; ++i){
-			free_resources.add(&spare_resources.at(i));
+			free_resources.enqueue(&spare_resources.at(i));
 		}
 	}
 	
@@ -33,21 +33,22 @@ namespace mutils {
 	template<typename T, typename... Args>	
 	typename pool_state<T,Args...>::LockedResource pool_state<T,Args...>::acquire_no_preference(std::shared_ptr<pool_state> _this, Args && ... a){
 		//don't even try to get a preference
-#define acquire_no_preference_internal_23847892784(pop_type)	\
-		auto *cand = _this->free_resources.pop_type();						\
-		while (cand){																		\
+#define acquire_no_preference_internal_23847892784(dq_type)	\
+		resource_pack* cand{nullptr};															\
+		bool success = _this->free_resources.dq_type(cand);				\
+		while (cand && success){																	\
 			try {																					\
-				cand->remove_from_free_list();							\
+				cand->remove_from_free_list();																	\
 				assert(cand);																										\
 				return LockedResource{nullptr, _this, cand->borrow(_this,std::forward<Args>(a)...)}; \
 			}																																	\
 			catch(const ResourceInvalidException&){														\
-				cand = _this->free_resources.pop_type();												\
+				success = _this->free_resources.dq_type(cand);									\
 			}																																	\
 		}																																		\
 
 		{
-			acquire_no_preference_internal_23847892784(pop);
+			acquire_no_preference_internal_23847892784(try_dequeue);
 		}
 		if (_this->allow_overdraws){
 			//whoops, entirely full!
@@ -57,7 +58,7 @@ namespace mutils {
 		else {
 			//do the acquire song-and-dance again, except this time block on pop when empty
 			++_this->number_waiters;
-			acquire_no_preference_internal_23847892784(pop_blocking);
+			acquire_no_preference_internal_23847892784(wait_dequeue);
 		}
 		struct this_is_not_possible_exn {};
 		throw this_is_not_possible_exn{};

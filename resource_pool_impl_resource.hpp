@@ -63,7 +63,7 @@ namespace mutils{
 		source.resource = std::move(this->t);
 		if (!source.in_free_list){
 			source.in_free_list = true;
-			this->parent->free_resources.add(&source);
+			this->parent->free_resources.enqueue(&source);
 		}
 	}
 
@@ -78,7 +78,7 @@ namespace mutils{
 	rented_spare<T,Args...>::~rented_spare(){
 		this->before_delete();
 		this->parent->spare_resources.at(index).resource = std::move(this->t);
-		this->parent->free_resources.add(&this->parent->spare_resources.at(index));
+		this->parent->free_resources.enqueue(&this->parent->spare_resources.at(index));
 	}
 
 	template<typename T, typename... Args>

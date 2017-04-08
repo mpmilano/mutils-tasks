@@ -104,12 +104,12 @@ void single_threaded_test(){
 	}
 	{
 		auto state = pool.dbg_leak_state();
-		assert(state->free_resources.size() == 5);
+		assert(state->free_resources.size_approx() == 5);
 		auto hold_first_shared = [&](const auto&, const auto&, const auto&){
 			return pool.acquire();
 		}(prefer_1.lock(), prefer_2.lock(),prefer_3.lock());
 		*hold_first_shared = 5;
-		assert(state->free_resources.size() == 4);
+		assert(state->free_resources.size_approx() == 4);
 
 		assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == hold_first_shared.which_resource_type());
 		
@@ -122,7 +122,7 @@ void single_threaded_test(){
 				return l;
 			}(prefer_1.lock(), prefer_2.lock(),prefer_3.lock())};
 		auto val = *spare.lock();
-		assert(state->free_resources.size() == 4);
+		assert(state->free_resources.size_approx() == 4);
 		assert(val > 0 && val <= 4);
 		auto locked_spare = spare.lock();
 		assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == locked_spare.which_resource_type()
@@ -188,7 +188,7 @@ void multi_threaded_test(){
 								 [i, weak_resource = WeakResource{std::move(acquired)}]()  mutable {
 									 auto locked_resource = weak_resource.lock(std::move(i));
 									 assert(locked_resource->held == true);
-									 while (locked_resource->incr() < 50000);
+									 while (locked_resource->incr() < 500000);
 								 }));
 	}
 	for (auto& fut : futs){
@@ -199,7 +199,7 @@ void multi_threaded_test(){
 	std::cout << "state check: " << std::endl;
 	for (const auto &res : state->preferred_resources){
 		auto i = res.resource->i;
-		if (i < 50000) std::cout << i << std::endl;
+		if (i < 500000) std::cout << i << std::endl;
 	}
 
 }
