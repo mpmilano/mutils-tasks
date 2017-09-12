@@ -2,7 +2,6 @@
 #include <vector>
 #include <memory>
 #include <atomic>
-#include "SafeSet.hpp"
 #include "resource_pool_declarations.hpp"
 #include "resource_pool_LockedResource.hpp"
 #include "resource_pool_WeakResource.hpp"

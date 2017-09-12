@@ -2,6 +2,7 @@
 #include "resource_pool_declarations.hpp"
 #include "resource_pool_resource_packs.hpp"
 #include "blockingconcurrentqueue.h"
+#include "../mutils-containers/SafeSet.hpp"
 
 namespace mutils{
 	namespace resource_pool {

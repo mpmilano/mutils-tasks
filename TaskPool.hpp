@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <future>
+#include "../mutils-containers/SafeSet.hpp"
 
 //generic interface implemented by ProcessPool, ThreadPool, and NetworkedProcessPool.  
 
