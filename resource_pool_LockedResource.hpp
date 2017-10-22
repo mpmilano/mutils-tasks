@@ -34,7 +34,7 @@ namespace mutils{
 			LockedResource lock(const Args &...);
 			bool is_locked() const;
 			LockedResource acquire_if_locked() const;
-			std::pair<std::size_t,resource_type> which_resource_type() const;
+			std::pair<std::size_t,resource_type> which__resource_type() const;
 
 			LockedResource clone();
 			WeakResource<T, Args...> weak();

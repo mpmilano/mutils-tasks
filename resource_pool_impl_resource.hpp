@@ -82,32 +82,32 @@ namespace mutils{
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t,resource_type> rented_preferred<T,Args...>::which_resource_type() const {
-		return resource_type();
+	std::pair<std::size_t,resource_type> rented_preferred<T,Args...>::which__resource_type() const {
+		return _resource_type();
 	}
 	template<typename T, typename... Args>
-	std::pair<std::size_t,resource_type> rented_spare<T,Args...>::which_resource_type() const {
-		return resource_type();
+	std::pair<std::size_t,resource_type> rented_spare<T,Args...>::which__resource_type() const {
+		return _resource_type();
 	}
 	template<typename T, typename... Args>
-	std::pair<std::size_t, resource_type> overdrawn<T,Args...>::which_resource_type() const {
-		return resource_type();
+	std::pair<std::size_t, resource_type> overdrawn<T,Args...>::which__resource_type() const {
+		return _resource_type();
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t, resource_type> rented_preferred<T,Args...>::resource_type(){
+	std::pair<std::size_t, resource_type> rented_preferred<T,Args...>::_resource_type(){
 		auto &tmp = typeid(rented_preferred);
 		return std::make_pair(tmp.hash_code(),resource_type::preferred);
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t, resource_type> rented_spare<T,Args...>::resource_type(){
+	std::pair<std::size_t, resource_type> rented_spare<T,Args...>::_resource_type(){
 		auto &tmp = typeid(rented_spare);
 		return std::make_pair(tmp.hash_code(),resource_type::spare);
 	}
 
 	template<typename T, typename... Args>
-	std::pair<std::size_t, resource_type> overdrawn<T,Args...>::resource_type(){
+	std::pair<std::size_t, resource_type> overdrawn<T,Args...>::_resource_type(){
 		auto &tmp = typeid(overdrawn);
 		return std::make_pair(tmp.hash_code(),resource_type::overdrawn);
 	}

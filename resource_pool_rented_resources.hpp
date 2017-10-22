@@ -10,7 +10,7 @@ namespace mutils{
 			using state = typename decls::state;
 			std::unique_ptr<T> t;
 			std::shared_ptr<state> parent;
-			virtual std::pair<std::size_t,resource_type> which_resource_type() const = 0;
+			virtual std::pair<std::size_t,resource_type> which__resource_type() const = 0;
 			bool deleted{false};
 			void before_delete();
 			virtual ~rented_resource();
@@ -28,8 +28,8 @@ namespace mutils{
 			this_p& who_owns_me;
 			const size_type index;
 			rented_preferred(std::unique_ptr<T> t, std::shared_ptr<state> parent, size_type indx, this_p& who_owns_me, Args&&...);
-			std::pair<std::size_t,resource_type> which_resource_type() const;
-			static std::pair<std::size_t,resource_type> resource_type();
+			std::pair<std::size_t,resource_type> which__resource_type() const;
+			static std::pair<std::size_t,resource_type> _resource_type();
 			~rented_preferred();
 		};
 
@@ -39,8 +39,8 @@ namespace mutils{
 			using state = typename decls::state;
 
 			overdrawn(std::shared_ptr<state> sp, std::unique_ptr<T> tp, Args&&...);
-			std::pair<std::size_t,resource_type> which_resource_type() const;
-			static std::pair<std::size_t,resource_type> resource_type();
+			std::pair<std::size_t,resource_type> which__resource_type() const;
+			static std::pair<std::size_t,resource_type> _resource_type();
 			~overdrawn();
 		};
 
@@ -52,8 +52,8 @@ namespace mutils{
 			
 			const size_type index;
 			rented_spare(std::shared_ptr<state> sp, std::unique_ptr<T> tp, size_type indx, Args&&...);
-			std::pair<std::size_t,resource_type> which_resource_type() const;
-			static std::pair<std::size_t,resource_type> resource_type();
+			std::pair<std::size_t,resource_type> which__resource_type() const;
+			static std::pair<std::size_t,resource_type> _resource_type();
 			~rented_spare();
 		};
 	}}

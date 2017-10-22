@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <cassert>
 #include <unistd.h>
+#include <iostream>
+#include <cstring>
 using namespace std;
 
 namespace mutils {
@@ -14,10 +16,9 @@ namespace mutils {
 	}
 	void eventfd::wait(){
 		buf_t buf{0};
-#ifndef NDEBUG
-		auto result =
-#endif
-			read(fd,&buf,sizeof(buf));
+		auto result = read(fd,&buf,sizeof(buf));
+		assert(result != -1);
+		if (result == -1) {std::cerr << std::strerror(errno) << std::endl; throw result;}
 		assert(result == sizeof(buf));
 	}
 
@@ -28,10 +29,9 @@ namespace mutils {
 	
 	void eventfd::notify(){
 		buf_t buf{1};
-#ifndef NDEBUG
-		auto result =
-#endif
-			write(fd,&buf,sizeof(buf));
+		auto result = write(fd,&buf,sizeof(buf));
+		assert(result != -1);
+		if (result == -1) {std::cerr << std::strerror(errno) << std::endl; throw result;}
 		assert(result == sizeof(buf));
 	}
 

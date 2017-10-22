@@ -111,12 +111,12 @@ void single_threaded_test(){
 		*hold_first_shared = 5;
 		assert(state->free_resources.size_approx() == 4);
 
-		assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == hold_first_shared.which_resource_type());
+		assert(ResourcePool<AssignOnce>::rented_spare::_resource_type() == hold_first_shared.which__resource_type());
 		
 		
 		WeakResource spare{[&](const auto &, const auto &, const auto&){
 				auto l = pool.acquire();
-				assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == l.which_resource_type());
+				assert(ResourcePool<AssignOnce>::rented_spare::_resource_type() == l.which__resource_type());
 				assert(*l == 0);
 				*l = 4;
 				return l;
@@ -125,8 +125,8 @@ void single_threaded_test(){
 		assert(state->free_resources.size_approx() == 4);
 		assert(val > 0 && val <= 4);
 		auto locked_spare = spare.lock();
-		assert(ResourcePool<AssignOnce>::rented_spare::resource_type() == locked_spare.which_resource_type()
-			   || ResourcePool<AssignOnce>::rented_preferred::resource_type() == locked_spare.which_resource_type()
+		assert(ResourcePool<AssignOnce>::rented_spare::_resource_type() == locked_spare.which__resource_type()
+			   || ResourcePool<AssignOnce>::rented_preferred::_resource_type() == locked_spare.which__resource_type()
 			);
 		
 		assert(*locked_spare > 0 || *locked_spare <= 4);
