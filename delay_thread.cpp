@@ -21,7 +21,7 @@ private:
     thread t{[this] {
         auto& q = this->q;
         delayed_action action;
-        while(bool success = q.wait_dequeue_timed(action, delay_amount)) {
+        while(bool success = q.wait_dequeue_timed(action, 1s)) {
             if(destroying)
                 break;
             else {

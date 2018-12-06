@@ -10,6 +10,7 @@ int main() {
     set_delay(2s);
     delay_action([] { std::cout << "this is a simple test" << std::endl; });
     delay_action([] { std::cout << "this is a simple test" << std::endl; });
+    set_delay(3s);
     delay_action([] { std::cout << "this is a simple test" << std::endl; });
-    this_thread::sleep_for(3s);
+    this_thread::sleep_for(4s);
 }
