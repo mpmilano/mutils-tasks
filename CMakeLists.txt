@@ -22,7 +22,7 @@ target_include_directories(mutils-tasks PRIVATE
 
 #Make install
 install(TARGETS mutils-tasks EXPORT mutils-tasks
-        LIBRARY DESTINATION lib)
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(DIRECTORY include/mutils-tasks
         DESTINATION include)
 
