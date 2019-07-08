@@ -10,6 +10,10 @@ set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS})
 set(CMAKE_CXX_FLAGS_DEBUG "-std=c++14 -fPIC -DMAX_THREADS=10000 -g")
 set(CMAKE_SHARED_LINKER_FLAGS "-shared --enable-new-dtags")
 
+if ( NOT DEFINED CMAKE_INSTALL_LIBDIR )
+    set( CMAKE_INSTALL_LIBDIR lib )
+endif ( )
+
 #Check dependencies
 find_package(mutils 1.0)
 if(NOT ${mutils_FOUND})
