@@ -23,7 +23,7 @@ namespace mutils{
 
 	template<typename T, typename... Args>
 	ResourcePool<T,Args...>::~ResourcePool(){
-#ifndef NDEBUG
+#ifdef MUTILS_DEBUG
 		std::cout << "Resource pool usage statistics: " << std::endl
 							<< "Number waiters: " << _state->number_waiters << std::endl
 				  << "Number overdraws: " << _state->number_overdraws << std::endl
