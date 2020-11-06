@@ -5,9 +5,9 @@ project (mutils-tasks)
 set(mutils_tasks_VERSION 1.0)
 
 #CXX FLAGS
-set(CMAKE_CXX_FLAGS "-std=c++14 -fPIC -DMAX_THREADS=10000")
+set(CMAKE_CXX_FLAGS "-std=c++14 -fPIC -DMAX_THREADS=100")
 set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS})
-set(CMAKE_CXX_FLAGS_DEBUG "-std=c++14 -fPIC -DMAX_THREADS=10000 -g")
+set(CMAKE_CXX_FLAGS_DEBUG "-std=c++14 -fPIC -DMAX_THREADS=100 -g")
 set(CMAKE_SHARED_LINKER_FLAGS "-shared --enable-new-dtags")
 
 if ( NOT DEFINED CMAKE_INSTALL_LIBDIR )
